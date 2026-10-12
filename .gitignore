@@ -8,3 +8,6 @@ dist/
 Kamron-APP-MVP.zip
 dist-zip/
 .tmp-reg/
+
+# Архивы — артефакты, а не исходники
+*.zip
