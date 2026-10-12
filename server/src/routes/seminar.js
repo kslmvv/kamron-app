@@ -4,13 +4,14 @@ import { complete, attachmentBlock } from '../llm.js';
 
 export const seminar = Router();
 
-const LIMIT = 12 * 1024 * 1024; // суммарный объём вложений в одном запросе
+// Картинки стоят в разы дороже текста, поэтому ограничение жёстче объёма запроса.
+const LIMIT = 4 * 1024 * 1024;
 
 /** Собирает одно сообщение: текст задания плюс приложенные материалы. */
 function buildContent(text, attachments = []) {
   const blocks = [{ type: 'text', text }];
   let total = 0;
-  for (const file of attachments.slice(0, 6)) {
+  for (const file of attachments.slice(0, 3)) {
     const size = (file.data || '').length;
     if (total + size > LIMIT) break;
     const block = attachmentBlock(file);

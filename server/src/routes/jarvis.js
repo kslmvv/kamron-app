@@ -57,8 +57,10 @@ jarvis.post('/chat', async (req, res, next) => {
 
     const history = messages
       .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-      .slice(-20)
-      .map(m => ({ role: m.role, content: m.content.slice(0, 8000) }));
+      // Вся история уходит в каждый запрос и оплачивается заново,
+      // поэтому держим её короткой: последние пары реплик решают дело.
+      .slice(-10)
+      .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }));
     if (!history.length) return res.status(400).json({ error: 'Пустой запрос' });
 
     const context = describe(snapshot);

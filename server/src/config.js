@@ -14,7 +14,15 @@ export const config = {
   openaiKey: process.env.OPENAI_API_KEY || '',
   model: process.env.LLM_MODEL || '',
   githubToken: process.env.GITHUB_TOKEN || '',
-  railwayToken: process.env.RAILWAY_TOKEN || ''
+  railwayToken: process.env.RAILWAY_TOKEN || '',
+  // Цены за 1 млн токенов — их задаёт провайдер и они меняются,
+  // поэтому это переменные окружения, а не константы в коде.
+  priceInput: Number(process.env.PRICE_INPUT_PER_M) || 0.25,
+  priceOutput: Number(process.env.PRICE_OUTPUT_PER_M) || 2,
+  dailyLimit: Number(process.env.DAILY_USD_LIMIT ?? 0.15),
+  // У моделей GPT-5 рассуждения по умолчанию «medium» и оплачиваются
+  // как выходные токены. Для коротких ответов помощника это лишние деньги.
+  reasoningEffort: process.env.OPENAI_REASONING_EFFORT || 'minimal'
 };
 
 /** Какие возможности реально настроены — приложение показывает это в интерфейсе. */

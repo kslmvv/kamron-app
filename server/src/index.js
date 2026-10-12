@@ -7,6 +7,7 @@
  */
 import express from 'express';
 import { config, capabilities } from './config.js';
+import { spendReport } from './budget.js';
 import { requireToken, rateLimit } from './auth.js';
 import { jarvis } from './routes/jarvis.js';
 import { seminar } from './routes/seminar.js';
@@ -39,13 +40,19 @@ app.get('/', (req, res) => {
     service: 'Kamron APP — сервер Jarvis',
     status: 'работает',
     health: '/api/health',
+    расход: spendReport(),
     модель: caps.jarvis ? caps.provider : 'не настроена — добавьте ключ провайдера в переменные окружения'
   });
 });
 
 /** Проверка доступности — без ключа, чтобы приложение видело статус до настройки. */
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, configured: !!config.accessToken, capabilities: capabilities() });
+  res.json({
+    ok: true,
+    configured: !!config.accessToken,
+    capabilities: capabilities(),
+    расход: spendReport()
+  });
 });
 
 app.use('/api', requireToken, rateLimit(30));

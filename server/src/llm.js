@@ -6,8 +6,12 @@
  * окружения LLM_PROVIDER.
  */
 import { config } from './config.js';
+import { assertWithinBudget, recordSpend } from './budget.js';
 
 const DEFAULT_MODEL = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-5-mini' };
+
+/** Сбрасывается в false, если провайдер не принял reasoning_effort. */
+let sendReasoningEffort = true;
 
 /** Таймаут: зависший запрос к модели не должен держать соединение с телефоном. */
 async function post(url, headers, body, timeoutMs = 60000) {
@@ -45,21 +49,41 @@ async function post(url, headers, body, timeoutMs = 60000) {
  * @returns {Promise<{text: string, model: string, usage: object}>}
  */
 export async function complete({ system, messages, maxTokens = 1200 }) {
+  assertWithinBudget();
   const provider = config.provider;
   const model = config.model || DEFAULT_MODEL[provider];
 
   if (provider === 'openai') {
     if (!config.openaiKey) throw Object.assign(new Error('OPENAI_API_KEY не задан'), { status: 503 });
-    const data = await post(
-      'https://api.openai.com/v1/chat/completions',
-      { authorization: `Bearer ${config.openaiKey}` },
-      {
-        model,
-        max_completion_tokens: maxTokens,
-        messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages]
-      }
-    );
-    return { text: data.choices?.[0]?.message?.content || '', model, usage: data.usage || {} };
+    const body = {
+      model,
+      max_completion_tokens: maxTokens,
+      messages: [...(system ? [{ role: 'system', content: system }] : []), ...messages]
+    };
+    if (sendReasoningEffort && config.reasoningEffort) body.reasoning_effort = config.reasoningEffort;
+    let data;
+    try {
+      data = await post(
+        'https://api.openai.com/v1/chat/completions',
+        { authorization: `Bearer ${config.openaiKey}` },
+        body
+      );
+    } catch (err) {
+      // Не все модели принимают этот параметр. Если дело в нём — повторяем без него
+      // и больше не отправляем, вместо того чтобы падать на каждом запросе.
+      if (err.status === 502 && /reasoning_effort/.test(err.detail || '') && sendReasoningEffort) {
+        sendReasoningEffort = false;
+        delete body.reasoning_effort;
+        data = await post(
+          'https://api.openai.com/v1/chat/completions',
+          { authorization: `Bearer ${config.openaiKey}` },
+          body
+        );
+      } else throw err;
+    }
+    const usage = data.usage || {};
+    recordSpend(usage);
+    return { text: data.choices?.[0]?.message?.content || '', model, usage };
   }
 
   if (!config.anthropicKey) throw Object.assign(new Error('ANTHROPIC_API_KEY не задан'), { status: 503 });
@@ -73,7 +97,9 @@ export async function complete({ system, messages, maxTokens = 1200 }) {
     .map(part => part.text)
     .join('\n')
     .trim();
-  return { text, model, usage: data.usage || {} };
+  const usage = data.usage || {};
+  recordSpend(usage);
+  return { text, model, usage };
 }
 
 /**
