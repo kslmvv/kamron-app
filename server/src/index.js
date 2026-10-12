@@ -32,6 +32,17 @@ app.use((req, res, next) => {
   next();
 });
 
+/** Корень открывают руками в браузере — пусть отвечает, что это за сервис и куда смотреть. */
+app.get('/', (req, res) => {
+  const caps = capabilities();
+  res.json({
+    service: 'Kamron APP — сервер Jarvis',
+    status: 'работает',
+    health: '/api/health',
+    модель: caps.jarvis ? caps.provider : 'не настроена — добавьте ключ провайдера в переменные окружения'
+  });
+});
+
 /** Проверка доступности — без ключа, чтобы приложение видело статус до настройки. */
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, configured: !!config.accessToken, capabilities: capabilities() });
