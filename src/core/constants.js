@@ -141,10 +141,10 @@ export const SHAPES = [
 ];
 
 export const THEMES = {
-  sky: { name: 'Небо', mood: 'Лёгкий день', color: '#e9f2fb' },
-  night: { name: 'Ночь', mood: 'Спокойный вечер', color: '#162134' },
-  sage: { name: 'Шалфей', mood: 'Спокойствие', color: '#edf3ec' },
-  sunset: { name: 'Рассвет', mood: 'Тёплый настрой', color: '#f8eee8' }
+  sky: { name: 'Небо', mood: 'Лёгкий день', color: '#f3f5f7' },
+  night: { name: 'Ночь', mood: 'Спокойный вечер', color: '#171d26' },
+  sage: { name: 'Шалфей', mood: 'Спокойствие', color: '#f2f5ef' },
+  sunset: { name: 'Рассвет', mood: 'Тёплый настрой', color: '#faf5f1' }
 };
 
 export const OLD_THEMES = {

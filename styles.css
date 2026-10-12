@@ -7357,3 +7357,242 @@ body[data-theme] .chat-composer textarea {
 .chat-composer textarea:disabled {
   opacity: 0.5;
 }
+
+/* Quieter, opaque surfaces. Themes keep their color without a glass layer. */
+body[data-theme='sky'] {
+  --bg: #f3f5f7;
+  --panel: #ffffff;
+  --raised: #edf1f5;
+  --line: #dce3e9;
+  --accent: #315f9a;
+  --accent-soft: #e6eef8;
+  --mint: #315f9a;
+  --glass: #edf1f5;
+  --glass-edge: #dce3e9;
+  --glass-shadow: none;
+  --wallpaper: #f3f5f7;
+  --tile-day-flat: #e9eef4;
+  --tile-work-flat: #e9f0ec;
+  --tile-uni-flat: #f2ece5;
+  --tile-gym-flat: #f0e9ed;
+}
+body[data-theme='night'] {
+  --bg: #171d26;
+  --panel: #222b36;
+  --raised: #2b3542;
+  --line: #3a4654;
+  --accent: #a6c8f1;
+  --accent-soft: #314660;
+  --glass: #2b3542;
+  --glass-edge: #3a4654;
+  --glass-shadow: none;
+  --wallpaper: #171d26;
+  --tile-day-flat: #2a394c;
+  --tile-work-flat: #293c35;
+  --tile-uni-flat: #40362f;
+  --tile-gym-flat: #3c303d;
+}
+body[data-theme='sage'] {
+  --bg: #f2f5ef;
+  --panel: #ffffff;
+  --raised: #e9efe7;
+  --line: #dce5db;
+  --glass: #e9efe7;
+  --glass-edge: #dce5db;
+  --glass-shadow: none;
+  --wallpaper: #f2f5ef;
+  --tile-day-flat: #e8eee8;
+  --tile-work-flat: #e2ede5;
+  --tile-uni-flat: #f0ece1;
+  --tile-gym-flat: #eee8e8;
+}
+body[data-theme='sunset'] {
+  --bg: #faf5f1;
+  --panel: #ffffff;
+  --raised: #f3ebe5;
+  --line: #eadfd8;
+  --glass: #f3ebe5;
+  --glass-edge: #eadfd8;
+  --glass-shadow: none;
+  --wallpaper: #faf5f1;
+  --tile-day-flat: #f2e9e1;
+  --tile-work-flat: #ebeee6;
+  --tile-uni-flat: #f2e7df;
+  --tile-gym-flat: #f0e6e9;
+}
+body[data-theme] .app-shell {
+  background: var(--bg);
+  box-shadow: none;
+}
+body[data-theme] .brand-mark,
+body[data-theme] .icon-btn,
+body[data-theme] .day-step,
+body[data-theme] .sheet-close {
+  background: var(--raised);
+  border-color: var(--line);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body[data-theme] .brand-mark {
+  color: var(--accent);
+}
+body[data-theme] .bottom-nav {
+  margin: 0;
+  padding: 6px 12px calc(env(safe-area-inset-bottom) + 7px);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body[data-theme] .nav-item.active {
+  border-radius: 12px;
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+body[data-theme] .progress-card,
+body[data-theme] .quick-note,
+body[data-theme] .mini-panel,
+body[data-theme] .card,
+body[data-theme] .timeline-card,
+body[data-theme] .detail-head,
+body[data-theme] .calendar-card,
+body[data-theme] .uni-summary > div,
+body[data-theme] .uni-next,
+body[data-theme] .settings-destination,
+body[data-theme] .overview-item,
+body[data-theme] .profile-card,
+body[data-theme] .jarvis-card {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+}
+body[data-theme] .dash-date {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body[data-theme] .dash-tile {
+  border-color: var(--line);
+  border-radius: 18px;
+  box-shadow: none;
+}
+body[data-theme] .dash-tile::after {
+  display: none;
+}
+body[data-theme] .dash-tile.routine {
+  background: var(--tile-day-flat);
+}
+body[data-theme] .dash-tile.work {
+  background: var(--tile-work-flat);
+}
+body[data-theme] .dash-tile.uni {
+  background: var(--tile-uni-flat);
+}
+body[data-theme] .dash-tile.gym {
+  background: var(--tile-gym-flat);
+}
+body[data-theme] .tile-emoji,
+body[data-theme='night'] .tile-emoji {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+}
+body[data-theme] .score-orb,
+body[data-theme] .heading-sticker,
+body[data-theme] .spotlight-sticker,
+body[data-theme] .jarvis-orb,
+body[data-theme] .more-icon,
+body[data-theme] .profile-avatar {
+  background: var(--accent-soft);
+  border-color: var(--line);
+  box-shadow: none;
+}
+body[data-theme] .section-spotlight,
+body[data-theme] .capture-card,
+body[data-theme] .routine-progress-card,
+body[data-theme] .gym-intro,
+body[data-theme] .jarvis-hero,
+body[data-theme] .jarvis-next,
+body[data-theme] .widget-preview,
+body[data-theme] .command-grid button {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: none;
+}
+body[data-theme] .secondary-btn,
+body[data-theme] .filter-chip,
+body[data-theme] .game-tab,
+body[data-theme] .settings-more-toggle {
+  background: var(--raised);
+  border-color: var(--line);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body[data-theme] .filter-chip.active,
+body[data-theme] .game-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+body[data-theme] .primary-btn,
+body[data-theme] .fab-small,
+body[data-theme] .theme-option.active,
+body[data-theme] .theme-swatch,
+body[data-theme] .theme-swatch i,
+body[data-theme] .theme-swatch b,
+body[data-theme] .chat-bubble {
+  box-shadow: none;
+}
+body[data-theme] .theme-swatch.sky {
+  background: #edf1f5;
+}
+body[data-theme] .theme-swatch.night {
+  background: #222b36;
+}
+body[data-theme] .theme-swatch.sage {
+  background: #e9efe7;
+}
+body[data-theme] .theme-swatch.sunset {
+  background: #f3ebe5;
+}
+body[data-theme] .sheet {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: 0 -12px 32px rgba(17, 29, 44, 0.12);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body[data-theme] .sheet::backdrop {
+  background: rgba(17, 24, 34, 0.48);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@media (hover: hover) {
+  body[data-theme] .card.clickable:hover,
+  body[data-theme] .subject-card:hover,
+  body[data-theme] .settings-destination:hover,
+  body[data-theme] .jarvis-card:hover {
+    box-shadow: none;
+    border-color: var(--accent);
+  }
+}
+
+/* Разбор подготовки от Jarvis. */
+.prep-review-text {
+  margin: 8px 0 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.prep-review .chat-error {
+  align-self: stretch;
+  max-width: none;
+  margin: 8px 0 12px;
+}

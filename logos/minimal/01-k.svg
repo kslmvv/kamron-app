@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
   <title id="t">Kamron APP — K</title>
-  <rect width="512" height="512" fill="#E7F0F5"/>
-  <path d="M182 149v214M201 254l121-106M203 258l121 106" fill="none" stroke="#1E4668" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="335" cy="369" r="14" fill="#BE7866"/>
+  <rect width="512" height="512" fill="#F3F2EE"/>
+  <path d="M183 153v206M206 256l118-101M206 256l118 101" fill="none" stroke="#202A2E" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

@@ -26,6 +26,7 @@ import {
 import { deletePrepFile, getPrepFile } from './features/files.js';
 import { checkServer, githubCommit, serverConfigured } from './features/api.js';
 import { clearChat, sendChatMessage } from './features/chat.js';
+import { reviewPrep } from './features/prep.js';
 import { checkReminders } from './features/reminders.js';
 import { postponeTask, toggleRoutine, toggleTask } from './features/tasks.js';
 import {
@@ -134,6 +135,10 @@ async function onAction(el) {
     link.download = p.attachments.find(f => f.id === id).name;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
+    return;
+  }
+  if (a === 'prep-review') {
+    await reviewPrep(id);
     return;
   }
   if (a === 'export-prep') {

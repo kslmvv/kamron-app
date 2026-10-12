@@ -1,7 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
   <title id="t">Kamron APP — Компас</title>
-  <rect width="512" height="512" fill="#DCE9E1"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#7BA18C" stroke-width="8"/>
-  <path d="m256 125 36 95-36 36-36-36zm131 131-95 36-36-36 36-36zm-131 131-36-95 36-36 36 36zM125 256l95-36 36 36-36 36z" fill="#244F48"/>
-  <circle cx="256" cy="256" r="23" fill="#DCE9E1"/>
+  <rect width="512" height="512" fill="#F3F2EE"/>
+  <circle cx="256" cy="256" r="139" fill="none" stroke="#202A2E" stroke-width="12"/><path d="m314 198-33 83-83 33 33-83z" fill="#202A2E"/><circle cx="256" cy="256" r="12" fill="#F3F2EE"/>
 </svg>

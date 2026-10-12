@@ -1,4 +1,5 @@
 /** Универ: предметы, страница предмета и подготовка к семинару. */
+import { serverConfigured } from '../features/api.js';
 import { DAY, PREP_QUESTIONS } from '../core/constants.js';
 import { svg } from '../core/icons.js';
 import {
@@ -112,8 +113,28 @@ export function renderSeminar() {
         p
           ? `<div class="card prep-card"><div class="row"><div class="grow"><div class="eyebrow">ТЕКУЩАЯ ТЕМА</div><h2>${esc(p.topic)}</h2></div><button class="text-btn" data-action="edit-seminar-prep" data-id="${safeId(p.id)}">Изменить</button></div>${p.context ? `<p class="prep-context">${esc(p.context)}</p>` : ''}<div class="prep-meta">${(p.attachments || []).length} материалов · ${answered}/${PREP_QUESTIONS.length} ответов</div></div>
       <div class="section-title">Материалы <small>${(p.attachments || []).length}</small></div><div class="card prep-materials">${(p.attachments || []).length ? (p.attachments || []).map(f => `<div class="prep-file"><span aria-hidden="true">${f.type?.startsWith('image/') ? '🖼️' : '📄'}</span><span class="grow"><strong>${esc(f.name)}</strong><small>${Math.max(1, Math.round(f.size / 1024))} КБ · отдельно от резервной копии</small></span><button class="text-btn" data-action="open-prep-file" data-id="${safeId(f.id)}" data-prep="${safeId(p.id)}" aria-label="Открыть файл ${esc(f.name)}">Открыть</button></div>`).join('') : '<p class="small muted">Добавь презентацию, документ, фото или текстовый файл.</p>'}<button class="secondary-btn prep-add" data-action="add-prep-files" data-id="${safeId(p.id)}">+ Добавить файлы</button></div>
-      <div class="section-title">Тренировка ответа <small data-answer-count>${answered}/${PREP_QUESTIONS.length}</small></div><p class="ai-helper-copy">Ответь без подсказки, затем проверь себя по своим материалам. Оценку ИИ этот макет пока не выдаёт.</p>${PREP_QUESTIONS.map((q, i) => `<div class="card prep-question"><div class="prep-question-title"><span>${i + 1}</span><strong>${esc(q)}</strong></div><textarea data-prep-answer="${i}" data-prep="${safeId(p.id)}" maxlength="3000" placeholder="Мой ответ…">${esc(answers[i] || '')}</textarea><small data-prep-save="${i}">Сохраняется автоматически</small></div>`).join('')}
+      <div class="section-title">Тренировка ответа <small data-answer-count>${answered}/${PREP_QUESTIONS.length}</small></div><p class="ai-helper-copy">${serverConfigured() ? 'Ответь без подсказки, затем попроси разбор — Jarvis сверит ответы с приложенными материалами.' : 'Ответь без подсказки, затем проверь себя по своим материалам. Разбор от Jarvis появится после подключения сервера.'}</p>${PREP_QUESTIONS.map((q, i) => `<div class="card prep-question"><div class="prep-question-title"><span>${i + 1}</span><strong>${esc(q)}</strong></div><textarea data-prep-answer="${i}" data-prep="${safeId(p.id)}" maxlength="3000" placeholder="Мой ответ…">${esc(answers[i] || '')}</textarea><small data-prep-save="${i}">Сохраняется автоматически</small></div>`).join('')}
+      ${prepReviewCard(p)}
       <div class="card prep-export"><strong>Передать в ChatGPT</strong><p>Скачай пакет с темой, контекстом и своими ответами. Приложи к нему исходные файлы вручную — в HTML нет отправки файлов модели.</p><button class="primary-btn" data-action="export-prep" data-id="${safeId(p.id)}">↓ Скачать пакет подготовки</button></div><button class="text-btn danger-action prep-delete" data-action="delete-prep" data-id="${safeId(p.id)}">Удалить эту подготовку</button>`
           : ''
       }`;
+}
+
+/**
+ * Разбор ответов от Jarvis.
+ * Без подключённого сервера блок не показывается: кнопка, которая ничего
+ * не делает, хуже её отсутствия.
+ */
+function prepReviewCard(prep) {
+  if (!prep || !serverConfigured()) return '';
+  const state = view.prepReview?.id === prep.id ? view.prepReview : null;
+  const body = state?.busy
+    ? '<p class="ai-helper-copy">Jarvis читает ответы и материалы…</p>'
+    : state?.error
+      ? `<p class="chat-error">${esc(state.error)}</p>`
+      : state?.text
+        ? `<div class="prep-review-text">${esc(state.text).replace(/\n/g, '<br>')}</div>`
+        : '<p class="ai-helper-copy">Jarvis разберёт ответы, укажет пробелы и даст три пункта на повторение. Картинки и PDF из материалов уходят вместе с ответами.</p>';
+  return `<div class="card prep-review"><strong>Разбор от Jarvis</strong>${body}
+      <button class="primary-btn" data-action="prep-review" data-id="${safeId(prep.id)}" ${state?.busy ? 'disabled' : ''}>${state?.text ? 'Разобрать заново' : 'Разобрать мои ответы'}</button></div>`;
 }

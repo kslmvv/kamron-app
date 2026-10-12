@@ -131,10 +131,10 @@
     ]
   ];
   var THEMES = {
-    sky: { name: "Небо", mood: "Лёгкий день", color: "#e9f2fb" },
-    night: { name: "Ночь", mood: "Спокойный вечер", color: "#162134" },
-    sage: { name: "Шалфей", mood: "Спокойствие", color: "#edf3ec" },
-    sunset: { name: "Рассвет", mood: "Тёплый настрой", color: "#f8eee8" }
+    sky: { name: "Небо", mood: "Лёгкий день", color: "#f3f5f7" },
+    night: { name: "Ночь", mood: "Спокойный вечер", color: "#171d26" },
+    sage: { name: "Шалфей", mood: "Спокойствие", color: "#f2f5ef" },
+    sunset: { name: "Рассвет", mood: "Тёплый настрой", color: "#faf5f1" }
   };
   var OLD_THEMES = {
     light: "sky",
@@ -184,8 +184,47 @@
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1e3);
   }
+  var TRANSLIT = {
+    а: "a",
+    б: "b",
+    в: "v",
+    г: "g",
+    д: "d",
+    е: "e",
+    ё: "e",
+    ж: "zh",
+    з: "z",
+    и: "i",
+    й: "y",
+    к: "k",
+    л: "l",
+    м: "m",
+    н: "n",
+    о: "o",
+    п: "p",
+    р: "r",
+    с: "s",
+    т: "t",
+    у: "u",
+    ф: "f",
+    х: "h",
+    ц: "c",
+    ч: "ch",
+    ш: "sh",
+    щ: "sch",
+    ъ: "",
+    ы: "y",
+    ь: "",
+    э: "e",
+    ю: "yu",
+    я: "ya",
+    ў: "o",
+    қ: "q",
+    ғ: "g",
+    ҳ: "h"
+  };
   function safeDownloadPart(value) {
-    return String(value || "file").toLowerCase().normalize("NFKD").replace(/[^a-z0-9а-яё_-]+/gi, "-").slice(0, 40) || "file";
+    return String(value || "file").toLowerCase().replace(/[а-яёўқғҳ]/g, (letter) => TRANSLIT[letter] ?? "").normalize("NFKD").replace(/[^a-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "file";
   }
 
   // src/core/toast.js
@@ -414,6 +453,9 @@
   }
   function jarvisChat(messages) {
     return request("/api/jarvis/chat", { method: "POST", body: { messages, snapshot: snapshot() } });
+  }
+  function seminarReview(payload) {
+    return request("/api/seminar/review", { method: "POST", body: payload });
   }
   function githubCommit(url) {
     return request(`/api/github/commit?url=${encodeURIComponent(url)}`);
@@ -1538,8 +1580,16 @@
       ${sessions.length ? `<div class="prep-tabs">${sessions.map((x) => `<button class="prep-tab ${x.id === p?.id ? "active" : ""}" data-action="select-prep" data-id="${safeId(x.id)}" aria-pressed="${x.id === p?.id}"><strong>${esc(x.topic)}</strong><small>${esc(fmt(x.createdAt.slice(0, 10), { day: "numeric", month: "short" }))}</small></button>`).join("")}</div>` : empty("📚", "Начни с темы", "Укажи тему семинара и приложи фото, презентацию или документ.", "new-seminar-prep", "Создать подготовку")}
       ${p ? `<div class="card prep-card"><div class="row"><div class="grow"><div class="eyebrow">ТЕКУЩАЯ ТЕМА</div><h2>${esc(p.topic)}</h2></div><button class="text-btn" data-action="edit-seminar-prep" data-id="${safeId(p.id)}">Изменить</button></div>${p.context ? `<p class="prep-context">${esc(p.context)}</p>` : ""}<div class="prep-meta">${(p.attachments || []).length} материалов · ${answered}/${PREP_QUESTIONS.length} ответов</div></div>
       <div class="section-title">Материалы <small>${(p.attachments || []).length}</small></div><div class="card prep-materials">${(p.attachments || []).length ? (p.attachments || []).map((f) => `<div class="prep-file"><span aria-hidden="true">${f.type?.startsWith("image/") ? "🖼️" : "📄"}</span><span class="grow"><strong>${esc(f.name)}</strong><small>${Math.max(1, Math.round(f.size / 1024))} КБ · отдельно от резервной копии</small></span><button class="text-btn" data-action="open-prep-file" data-id="${safeId(f.id)}" data-prep="${safeId(p.id)}" aria-label="Открыть файл ${esc(f.name)}">Открыть</button></div>`).join("") : '<p class="small muted">Добавь презентацию, документ, фото или текстовый файл.</p>'}<button class="secondary-btn prep-add" data-action="add-prep-files" data-id="${safeId(p.id)}">+ Добавить файлы</button></div>
-      <div class="section-title">Тренировка ответа <small data-answer-count>${answered}/${PREP_QUESTIONS.length}</small></div><p class="ai-helper-copy">Ответь без подсказки, затем проверь себя по своим материалам. Оценку ИИ этот макет пока не выдаёт.</p>${PREP_QUESTIONS.map((q, i) => `<div class="card prep-question"><div class="prep-question-title"><span>${i + 1}</span><strong>${esc(q)}</strong></div><textarea data-prep-answer="${i}" data-prep="${safeId(p.id)}" maxlength="3000" placeholder="Мой ответ…">${esc(answers[i] || "")}</textarea><small data-prep-save="${i}">Сохраняется автоматически</small></div>`).join("")}
+      <div class="section-title">Тренировка ответа <small data-answer-count>${answered}/${PREP_QUESTIONS.length}</small></div><p class="ai-helper-copy">${serverConfigured() ? "Ответь без подсказки, затем попроси разбор — Jarvis сверит ответы с приложенными материалами." : "Ответь без подсказки, затем проверь себя по своим материалам. Разбор от Jarvis появится после подключения сервера."}</p>${PREP_QUESTIONS.map((q, i) => `<div class="card prep-question"><div class="prep-question-title"><span>${i + 1}</span><strong>${esc(q)}</strong></div><textarea data-prep-answer="${i}" data-prep="${safeId(p.id)}" maxlength="3000" placeholder="Мой ответ…">${esc(answers[i] || "")}</textarea><small data-prep-save="${i}">Сохраняется автоматически</small></div>`).join("")}
+      ${prepReviewCard(p)}
       <div class="card prep-export"><strong>Передать в ChatGPT</strong><p>Скачай пакет с темой, контекстом и своими ответами. Приложи к нему исходные файлы вручную — в HTML нет отправки файлов модели.</p><button class="primary-btn" data-action="export-prep" data-id="${safeId(p.id)}">↓ Скачать пакет подготовки</button></div><button class="text-btn danger-action prep-delete" data-action="delete-prep" data-id="${safeId(p.id)}">Удалить эту подготовку</button>` : ""}`;
+  }
+  function prepReviewCard(prep) {
+    if (!prep || !serverConfigured()) return "";
+    const state = view.prepReview?.id === prep.id ? view.prepReview : null;
+    const body = state?.busy ? '<p class="ai-helper-copy">Jarvis читает ответы и материалы…</p>' : state?.error ? `<p class="chat-error">${esc(state.error)}</p>` : state?.text ? `<div class="prep-review-text">${esc(state.text).replace(/\n/g, "<br>")}</div>` : '<p class="ai-helper-copy">Jarvis разберёт ответы, укажет пробелы и даст три пункта на повторение. Картинки и PDF из материалов уходят вместе с ответами.</p>';
+    return `<div class="card prep-review"><strong>Разбор от Jarvis</strong>${body}
+      <button class="primary-btn" data-action="prep-review" data-id="${safeId(prep.id)}" ${state?.busy ? "disabled" : ""}>${state?.text ? "Разобрать заново" : "Разобрать мои ответы"}</button></div>`;
   }
 
   // src/views/work.js
@@ -2370,6 +2420,62 @@ ${checks}
     return kind === "personal" ? data.personalTasks : getParent(kind, parent)?.tasks;
   }
 
+  // src/features/prep.js
+  var SENDABLE = /^(image\/(png|jpe?g|gif|webp)|application\/pdf)$/;
+  var BUDGET = 8 * 1024 * 1024;
+  function toBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+      reader.onerror = () => reject(reader.error || new Error("Не удалось прочитать файл"));
+      reader.readAsDataURL(blob);
+    });
+  }
+  async function collectAttachments(prep) {
+    const out = [];
+    let total = 0;
+    for (const entry of (prep.attachments || []).slice(0, 6)) {
+      if (!SENDABLE.test(entry.type || "")) continue;
+      if (total + entry.size > BUDGET) continue;
+      const blob = await getPrepFile(entry.id).catch(() => null);
+      if (!blob) continue;
+      total += entry.size;
+      out.push({ mime: entry.type, data: await toBase64(blob) });
+    }
+    return out;
+  }
+  async function reviewPrep(prepId) {
+    const prep = data.seminarPreps.find((x) => x.id === prepId);
+    if (!prep) return;
+    if (!serverConfigured()) {
+      toast("Сервер Jarvis не подключён");
+      return;
+    }
+    const answers = PREP_QUESTIONS.map((question, i) => ({
+      question,
+      answer: String(prep.answers?.[i] || "").trim()
+    }));
+    if (!answers.some((a) => a.answer)) {
+      toast("Сначала ответьте хотя бы на один вопрос");
+      return;
+    }
+    const subject = data.subjects.find((s) => s.id === prep.subjectId);
+    view.prepReview = { id: prepId, busy: true, text: "", error: "" };
+    render();
+    try {
+      const result = await seminarReview({
+        subject: subject?.name || "",
+        topic: prep.topic,
+        answers,
+        attachments: await collectAttachments(prep)
+      });
+      view.prepReview = { id: prepId, busy: false, text: result.review || "", error: "" };
+    } catch (err) {
+      view.prepReview = { id: prepId, busy: false, text: "", error: err.message };
+    }
+    render();
+  }
+
   // src/features/reminders.js
   function checkReminders() {
     if (!data.reminders) return;
@@ -2711,6 +2817,10 @@ ${checks}
       link.download = p.attachments.find((f) => f.id === id).name;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 3e3);
+      return;
+    }
+    if (a === "prep-review") {
+      await reviewPrep(id);
       return;
     }
     if (a === "export-prep") {
