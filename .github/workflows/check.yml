@@ -1,0 +1,24 @@
+# Проверки на каждый push и pull request: сборка, потерянные импорты,
+# сквозные тесты в браузере.
+name: Проверки
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm run check
+      - name: Сборка совпадает с исходниками
+        run: git diff --exit-code -- app.js sw.js
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

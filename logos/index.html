@@ -3,38 +3,87 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Kamron APP — новые логотипы</title>
+  <meta name="theme-color" content="#F5F7F8">
+  <title>Kamron APP — логотип с буквой K</title>
   <style>
-    :root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;color:#202a2e;background:#f6f6f3}*{box-sizing:border-box}
-    body{margin:0;min-height:100vh;background:#f6f6f3}button,a{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:auto;padding:38px 24px 72px}
-    header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:28px}header h1{font-size:clamp(32px,5vw,54px);line-height:1.04;letter-spacing:-.055em;margin:7px 0 10px}header p{max-width:610px;margin:0;color:#697271;font-size:14px;line-height:1.5}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.13em;color:#46504e;text-transform:uppercase}.old-link{flex:none;color:#46504e;text-decoration:none;border-bottom:1px solid #aeb6b2;padding:6px 0;font-size:12px;font-weight:700}
-    .feature{display:flex;gap:26px;align-items:center;background:#fff;border:1px solid #e3e7e3;border-radius:27px;padding:25px;margin-bottom:22px}.feature img{width:clamp(126px,22vw,186px);aspect-ratio:1;object-fit:cover;border-radius:23%;flex:none}.feature h2{font-size:clamp(24px,4vw,37px);letter-spacing:-.04em;margin:5px 0 8px}.feature p{color:#67716d;line-height:1.45;font-size:14px;margin:0;max-width:420px}.feature small{display:block;margin-top:15px;color:#7b8580;font-size:11px}
-    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.card{min-width:0;padding:15px;background:#fff;border:1px solid #e3e7e3;border-radius:21px;transition:border-color .18s,transform .18s}.card:hover{transform:translateY(-2px)}.card.selected{border-color:#202a2e;box-shadow:inset 0 0 0 1px #202a2e}.choose{display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left}.pair{display:flex;align-items:end;gap:12px;padding:2px 0 16px}.pair img:first-child{width:min(100%,120px);aspect-ratio:1;border-radius:23%}.pair img:last-child{width:40px;height:40px;border-radius:23%}.card strong{display:block;font-size:14px;letter-spacing:-.02em}.card p{min-height:32px;color:#6c7772;font-size:11px;line-height:1.35;margin:6px 0 8px}.download{color:#202a2e;font-size:11px;font-weight:750;text-decoration:none;padding:5px 0;display:inline-block}.download:hover{text-decoration:underline}.footer{margin-top:23px;color:#737e79;font-size:12px;line-height:1.5}
-    @media(max-width:780px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.wrap{padding:27px 14px 48px}header{align-items:start}.old-link{display:none}.feature{padding:15px;gap:15px;border-radius:20px}.feature img{width:104px}.feature small{display:none}.grid{gap:9px}.card{padding:10px;border-radius:16px}.pair{gap:6px}.pair img:first-child{width:min(100%,104px)}.pair img:last-child{width:29px;height:29px}.card p{font-size:10px;min-height:40px}}@media(prefers-reduced-motion:reduce){.card{transition:none}}
+    :root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;color:#14283A;background:#F5F7F8}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:#F5F7F8}
+    button,a{font:inherit}
+    button{cursor:pointer}
+    .wrap{max-width:1080px;margin:0 auto;padding:38px 24px 64px}
+    header{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:26px}
+    .eyebrow{display:block;color:#536473;font-size:11px;font-weight:750;letter-spacing:.13em;text-transform:uppercase}
+    h1{margin:8px 0 10px;font-size:clamp(38px,5vw,60px);line-height:1;letter-spacing:-.065em}
+    header p{max-width:580px;margin:0;color:#637482;font-size:14px;line-height:1.5}
+    .history{flex:none;color:#29465C;text-decoration:none;border-bottom:1px solid #AAB7C1;padding:5px 0;font-size:12px;font-weight:700}
+    .feature{display:flex;align-items:center;gap:28px;min-width:0;margin-bottom:21px;padding:24px;background:#fff;border:1px solid #DFE5E9;border-radius:23px}
+    .feature-preview{display:flex;gap:11px;flex:none}
+    .feature-preview img{display:block;width:clamp(122px,15vw,158px);aspect-ratio:1;border:1px solid #E6EBEE;border-radius:24%}
+    .feature-copy{min-width:0}
+    .feature h2{margin:5px 0 7px;font-size:clamp(24px,3.6vw,38px);line-height:1.08;letter-spacing:-.045em}
+    .feature p{max-width:350px;margin:0;color:#61717E;font-size:14px;line-height:1.45}
+    .download-row{display:flex;gap:13px;flex-wrap:wrap;margin-top:17px}
+    .download-row a{color:#173C58;font-size:12px;font-weight:730;text-decoration:none;border-bottom:1px solid #A7B8C5;padding-bottom:2px}
+    .download-row a:hover,.history:hover{text-decoration:underline}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+    .card{min-width:0;padding:12px;background:#fff;border:1px solid #DFE5E9;border-radius:18px;transition:transform .18s ease,border-color .18s ease}
+    .card:hover{transform:translateY(-2px)}
+    .card.selected{border:2px solid #173C58;padding:11px}
+    .choose{display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left}
+    .samples{display:flex;gap:8px;margin-bottom:12px}
+    .samples img{display:block;width:min(46%,98px);aspect-ratio:1;border:1px solid #E6EBEE;border-radius:24%}
+    .card strong{display:block;font-size:14px;letter-spacing:-.025em}
+    .card small{display:block;min-height:32px;margin-top:5px;color:#6B7A84;font-size:11px;line-height:1.4}
+    .footer{display:flex;gap:15px;align-items:center;flex-wrap:wrap;margin-top:21px;color:#697984;font-size:12px;line-height:1.5}
+    .footer a{color:#173C58;font-weight:750;text-decoration:none}
+    button:focus-visible,a:focus-visible{outline:2px solid #315F80;outline-offset:3px}
+    @media(max-width:780px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:600px){.wrap{padding:26px 14px 48px}header{align-items:start}h1{font-size:42px}.history{font-size:11px}.feature{display:block;padding:15px;border-radius:19px}.feature-preview img{width:clamp(105px,33vw,134px)}.feature-copy{margin-top:17px}.feature h2{font-size:26px}.feature p{font-size:13px}.download-row{margin-top:13px}}
+    @media(max-width:380px){.history{display:none}.grid{gap:8px}.card{padding:9px}.card.selected{padding:8px}.samples{gap:5px;margin-bottom:9px}.card small{font-size:10px;min-height:44px}}
+    @media(prefers-reduced-motion:reduce){.card{transition:none}}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <header><div><span class="eyebrow">KAMRON APP / ЛОГОТИП</span><h1>Тише. Чище. Точнее.</h1><p>Восемь монохромных знаков без бликов и лишних деталей. Слева на карточке — обычный размер, рядом — размер иконки на экране iPhone.</p></div><a class="old-link" href="previous.html">Первая серия →</a></header>
-    <section class="feature" aria-live="polite"><img id="large" src="minimal/01-k.svg" alt="Выбранный логотип"><div><span class="eyebrow" id="number">Вариант 01</span><h2 id="title">Буква K</h2><p id="description">Личная монограмма. Самый узнаваемый знак для Kamron APP.</p><small>Нажми на вариант ниже, чтобы рассмотреть крупнее.</small></div></section>
+    <header>
+      <div><span class="eyebrow">KAMRON APP / K SERIES</span><h1>Только K.</h1><p>Восемь форм одной буквы. Каждая показана белой на тёмно-синем и тёмно-синей на белом — без стекла, градиентов и бликов.</p></div>
+      <a class="history" href="minimal-gallery.html">Предыдущие знаки →</a>
+    </header>
+    <section class="feature" aria-live="polite">
+      <div class="feature-preview"><img id="feature-dark" src="k-series/dark-01.svg" alt="Выбранный знак: тёмный вариант"><img id="feature-light" src="k-series/light-01.svg" alt="Выбранный знак: светлый вариант"></div>
+      <div class="feature-copy"><span class="eyebrow" id="feature-number">Вариант 01</span><h2 id="feature-title">Подпись</h2><p id="feature-description">Мягкая и уверенная K с ровным ритмом.</p><div class="download-row"><a id="download-dark" href="k-series/dark-01.svg" download>Тёмный SVG ↓</a><a id="download-light" href="k-series/light-01.svg" download>Светлый SVG ↓</a></div></div>
+    </section>
     <div class="grid" id="gallery">
-      <article class="card selected" data-number="01" data-file="minimal/01-k.svg" data-title="Буква K" data-description="Личная монограмма. Самый узнаваемый знак для Kamron APP."><button class="choose" aria-label="Выбрать вариант 1"><span class="pair"><img src="minimal/01-k.svg" alt=""><img src="minimal/01-k.svg" alt=""></span><strong>01 · Буква K</strong><p>Личная подпись приложения.</p></button><a class="download" href="minimal/01-k.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="02" data-file="minimal/02-orbit.svg" data-title="Орбита" data-description="Один центр для всех дел. Самый близкий к идее личного пространства."><button class="choose" aria-label="Выбрать вариант 2"><span class="pair"><img src="minimal/02-orbit.svg" alt=""><img src="minimal/02-orbit.svg" alt=""></span><strong>02 · Орбита</strong><p>Личный центр для всего важного.</p></button><a class="download" href="minimal/02-orbit.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="03" data-file="minimal/03-four.svg" data-title="Четыре направления" data-description="День, работа, универ и зал соединены в одном спокойном символе."><button class="choose" aria-label="Выбрать вариант 3"><span class="pair"><img src="minimal/03-four.svg" alt=""><img src="minimal/03-four.svg" alt=""></span><strong>03 · Четыре</strong><p>Четыре основных раздела.</p></button><a class="download" href="minimal/03-four.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="04" data-file="minimal/04-compass.svg" data-title="Компас" data-description="Тихий ориентир для планов и решений каждый день."><button class="choose" aria-label="Выбрать вариант 4"><span class="pair"><img src="minimal/04-compass.svg" alt=""><img src="minimal/04-compass.svg" alt=""></span><strong>04 · Компас</strong><p>Направление без перегруза.</p></button><a class="download" href="minimal/04-compass.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="05" data-file="minimal/05-portal.svg" data-title="Портал" data-description="Вход в личное пространство с планами, знаниями и проектами."><button class="choose" aria-label="Выбрать вариант 5"><span class="pair"><img src="minimal/05-portal.svg" alt=""><img src="minimal/05-portal.svg" alt=""></span><strong>05 · Портал</strong><p>Своя точка входа в день.</p></button><a class="download" href="minimal/05-portal.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="06" data-file="minimal/06-check.svg" data-title="Сделано" data-description="Выполнение дел, прогресс и удовольствие от результата."><button class="choose" aria-label="Выбрать вариант 6"><span class="pair"><img src="minimal/06-check.svg" alt=""><img src="minimal/06-check.svg" alt=""></span><strong>06 · Сделано</strong><p>Простой символ прогресса.</p></button><a class="download" href="minimal/06-check.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="07" data-file="minimal/07-star.svg" data-title="Jarvis" data-description="Спокойная звезда как знак присутствия личного помощника."><button class="choose" aria-label="Выбрать вариант 7"><span class="pair"><img src="minimal/07-star.svg" alt=""><img src="minimal/07-star.svg" alt=""></span><strong>07 · Jarvis</strong><p>Помощник всегда рядом.</p></button><a class="download" href="minimal/07-star.svg" download>Скачать SVG ↓</a></article>
-      <article class="card" data-number="08" data-file="minimal/08-path.svg" data-title="Путь" data-description="Гибкая линия между сегодняшним планом и будущим результатом."><button class="choose" aria-label="Выбрать вариант 8"><span class="pair"><img src="minimal/08-path.svg" alt=""><img src="minimal/08-path.svg" alt=""></span><strong>08 · Путь</strong><p>Движение вперёд своим темпом.</p></button><a class="download" href="minimal/08-path.svg" download>Скачать SVG ↓</a></article>
+      <article class="card selected" data-number="01" data-title="Подпись" data-description="Мягкая и уверенная K с ровным ритмом."><button class="choose" type="button" aria-label="Выбрать вариант 01: Подпись" aria-pressed="true"><span class="samples"><img src="k-series/dark-01.svg" alt=""><img src="k-series/light-01.svg" alt=""></span><strong>01 · Подпись</strong><small>Мягкая и уверенная K с ровным ритмом.</small></button></article>
+      <article class="card" data-number="02" data-title="Монограмма" data-description="Плотный цельный знак для маленькой иконки."><button class="choose" type="button" aria-label="Выбрать вариант 02: Монограмма" aria-pressed="false"><span class="samples"><img src="k-series/dark-02.svg" alt=""><img src="k-series/light-02.svg" alt=""></span><strong>02 · Монограмма</strong><small>Плотный цельный знак для маленькой иконки.</small></button></article>
+      <article class="card" data-number="03" data-title="Разрыв" data-description="Три штриха и немного воздуха в центре."><button class="choose" type="button" aria-label="Выбрать вариант 03: Разрыв" aria-pressed="false"><span class="samples"><img src="k-series/dark-03.svg" alt=""><img src="k-series/light-03.svg" alt=""></span><strong>03 · Разрыв</strong><small>Три штриха и немного воздуха в центре.</small></button></article>
+      <article class="card" data-number="04" data-title="Модули" data-description="Геометрическая K из трёх простых элементов."><button class="choose" type="button" aria-label="Выбрать вариант 04: Модули" aria-pressed="false"><span class="samples"><img src="k-series/dark-04.svg" alt=""><img src="k-series/light-04.svg" alt=""></span><strong>04 · Модули</strong><small>Геометрическая K из трёх простых элементов.</small></button></article>
+      <article class="card" data-number="05" data-title="Плавная" data-description="Плавный изгиб добавляет характер без декора."><button class="choose" type="button" aria-label="Выбрать вариант 05: Плавная" aria-pressed="false"><span class="samples"><img src="k-series/dark-05.svg" alt=""><img src="k-series/light-05.svg" alt=""></span><strong>05 · Плавная</strong><small>Плавный изгиб добавляет характер без декора.</small></button></article>
+      <article class="card" data-number="06" data-title="Тонкая" data-description="Лёгкая типографическая форма."><button class="choose" type="button" aria-label="Выбрать вариант 06: Тонкая" aria-pressed="false"><span class="samples"><img src="k-series/dark-06.svg" alt=""><img src="k-series/light-06.svg" alt=""></span><strong>06 · Тонкая</strong><small>Лёгкая типографическая форма.</small></button></article>
+      <article class="card" data-number="07" data-title="Эмблема" data-description="Буква K в строгой окружности."><button class="choose" type="button" aria-label="Выбрать вариант 07: Эмблема" aria-pressed="false"><span class="samples"><img src="k-series/dark-07.svg" alt=""><img src="k-series/light-07.svg" alt=""></span><strong>07 · Эмблема</strong><small>Буква K в строгой окружности.</small></button></article>
+      <article class="card" data-number="08" data-title="Негатив" data-description="K вырезана в цельной квадратной форме."><button class="choose" type="button" aria-label="Выбрать вариант 08: Негатив" aria-pressed="false"><span class="samples"><img src="k-series/dark-08.svg" alt=""><img src="k-series/light-08.svg" alt=""></span><strong>08 · Негатив</strong><small>K вырезана в цельной квадратной форме.</small></button></article>
     </div>
-    <p class="footer">Иконка самого приложения пока не заменена. Все варианты сохранены отдельно, чтобы ты мог выбрать.</p>
+    <p class="footer"><a href="../Kamron-K-logo-variants.zip" download>Скачать все 16 SVG</a><span>Иконку приложения можно выбрать после сравнения вариантов.</span></p>
   </main>
   <script>
-    document.getElementById('gallery').addEventListener('click',event=>{
-      const button=event.target.closest('.choose');if(!button)return;
-      const card=button.closest('.card');document.querySelectorAll('.card').forEach(item=>item.classList.toggle('selected',item===card));
-      document.getElementById('large').src=card.dataset.file;document.getElementById('number').textContent=`Вариант ${card.dataset.number}`;
-      document.getElementById('title').textContent=card.dataset.title;document.getElementById('description').textContent=card.dataset.description;
+    document.getElementById('gallery').addEventListener('click', event => {
+      const button=event.target.closest('.choose');
+      if(!button)return;
+      const card=button.closest('.card');
+      document.querySelectorAll('.card').forEach(item=>{
+        const selected=item===card;
+        item.classList.toggle('selected',selected);
+        item.querySelector('.choose').setAttribute('aria-pressed',String(selected));
+      });
+      const number=card.dataset.number;
+      document.getElementById('feature-dark').src=`k-series/dark-${number}.svg`;
+      document.getElementById('feature-light').src=`k-series/light-${number}.svg`;
+      document.getElementById('download-dark').href=`k-series/dark-${number}.svg`;
+      document.getElementById('download-light').href=`k-series/light-${number}.svg`;
+      document.getElementById('feature-number').textContent=`Вариант ${number}`;
+      document.getElementById('feature-title').textContent=card.dataset.title;
+      document.getElementById('feature-description').textContent=card.dataset.description;
     });
   </script>
 </body>
