@@ -48,8 +48,16 @@ export const defaults = () => ({
   phone: defaultPhone(),
   gym: [],
   best: { block: 0, merge: 0, memory: 0 },
-  games: {}
+  games: {},
+  server: defaultServer()
 });
+
+/**
+ * Подключение к серверу Jarvis.
+ * Ключ доступа — личный пропуск к вашему же сервису, а не ключ модели:
+ * ключи провайдеров живут только на сервере, в переменных окружения.
+ */
+export const defaultServer = () => ({ url: '', token: '' });
 
 export function normalizeData(raw) {
   const fresh = defaults();
@@ -258,9 +266,20 @@ export function normalizeData(raw) {
       : [0, 1, 2, 3, 4, 5, 6],
     reports
   };
+  const serverRaw = rest.server && typeof rest.server === 'object' ? rest.server : {};
+  // Адрес сервера принимаем только по https — ключ доступа не должен уходить открытым текстом.
+  const serverUrl = String(serverRaw.url || '').trim();
+  const server = {
+    url:
+      /^https:\/\/[^\s]+$/.test(serverUrl) || /^http:\/\/localhost(:\d+)?$/.test(serverUrl) ? serverUrl : '',
+    token: String(serverRaw.token || '')
+      .trim()
+      .slice(0, 200)
+  };
   return {
     ...fresh,
     ...rest,
+    server,
     projects,
     subjects,
     notes,

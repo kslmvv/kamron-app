@@ -4,6 +4,7 @@ import { data, rt, save, setData, view } from '../core/state.js';
 import { toast } from '../core/toast.js';
 import { $, esc, today, uid } from '../core/utils.js';
 import { validGithubUrl, validRailwayUrl } from '../features/export.js';
+import { sendChatMessage } from '../features/chat.js';
 import { attachPrepFiles, deletePrepFile } from '../features/files.js';
 import { render } from '../ui/shell.js';
 import { voiceToday } from '../views/settings.js';
@@ -69,6 +70,25 @@ export async function submitForm(form) {
   const fd = new FormData(form),
     type = form.dataset.form,
     id = form.dataset.id;
+  // Диалог и подключение к серверу обрабатываются отдельно: у них свой
+  // жизненный цикл и общая логика сохранения ниже им не подходит.
+  if (type === 'chat') return sendChatMessage(String(fd.get('text') || ''));
+  if (type === 'server') {
+    const url = String(fd.get('url') || '')
+      .trim()
+      .replace(/\/+$/, '');
+    const token = String(fd.get('token') || '').trim();
+    if (url && !/^https:\/\//.test(url) && !/^http:\/\/localhost(:\d+)?$/.test(url)) {
+      toast('Адрес должен начинаться с https://');
+      return;
+    }
+    data.server = { url, token };
+    save();
+    closeModal(true);
+    toast(url && token ? 'Сервер Jarvis подключён' : 'Подключение сервера очищено');
+    render();
+    return;
+  }
   const previous = JSON.stringify(data);
   const createdFromTasks = view.page === 'tasks';
   if (type === 'seminar-prep') {

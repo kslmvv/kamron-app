@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">Kamron APP — Путь</title>
+  <rect width="512" height="512" fill="#E5EDF2"/>
+  <path d="M149 346V216c0-44 25-69 68-69h83c39 0 63 24 63 61 0 33-19 52-57 58l-83 12c-43 6-68 25-68 64" fill="none" stroke="#285A7C" stroke-width="35" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="149" cy="346" r="25" fill="#C1856F"/>
+  <circle cx="363" cy="208" r="18" fill="#285A7C"/>
+</svg>

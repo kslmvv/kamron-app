@@ -5,6 +5,7 @@ import { data, resolveTheme, scrollMemory, view } from '../core/state.js';
 import { $, today } from '../core/utils.js';
 import { flushPrepAnswer } from '../forms/modal.js';
 import { renderGames } from '../games/index.js';
+import { renderChat } from '../views/chat.js';
 import { renderGym } from '../views/gym.js';
 import { renderHome, renderJarvis, renderMore } from '../views/home.js';
 import { renderNotes } from '../views/notes.js';
@@ -123,6 +124,7 @@ export function render() {
     home: renderHome,
     more: renderMore,
     jarvis: renderJarvis,
+    chat: renderChat,
     routine: renderRoutine,
     work: renderWork,
     project: renderProject,

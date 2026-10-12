@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">Kamron APP — Орбита</title>
+  <rect width="512" height="512" fill="#19374F"/>
+  <path d="M358 158a138 138 0 1 0 37 123" fill="none" stroke="#E9F3F8" stroke-width="38" stroke-linecap="round"/>
+  <circle cx="369" cy="148" r="22" fill="#D19A80"/>
+  <circle cx="256" cy="256" r="26" fill="#E9F3F8"/>
+</svg>

@@ -24,6 +24,8 @@ import {
   validGithubUrl
 } from './features/export.js';
 import { deletePrepFile, getPrepFile } from './features/files.js';
+import { checkServer, githubCommit, serverConfigured } from './features/api.js';
+import { clearChat, sendChatMessage } from './features/chat.js';
 import { checkReminders } from './features/reminders.js';
 import { postponeTask, toggleRoutine, toggleTask } from './features/tasks.js';
 import {
@@ -41,6 +43,7 @@ import {
   quickUniTaskForm,
   quickWorkTaskForm,
   seminarPrepForm,
+  serverForm,
   subjectForm,
   taskForm,
   techRequestForm
@@ -189,6 +192,38 @@ async function onAction(el) {
     refreshPage(false);
     return;
   }
+  if (a === 'server-form') {
+    serverForm();
+    return;
+  }
+  if (a === 'server-check') {
+    const form = el.closest('form'),
+      status = form?.querySelector('#server-status');
+    const url = form?.querySelector('input[name="url"]')?.value || '';
+    if (status) status.textContent = 'Проверяем…';
+    try {
+      const health = await checkServer(url);
+      const caps = health.capabilities || {};
+      const parts = [
+        health.configured ? 'ключ доступа задан' : 'на сервере не задан APP_ACCESS_TOKEN',
+        caps.jarvis ? `модель: ${caps.provider}` : 'модель не настроена',
+        caps.githubPrivate ? 'GitHub с токеном' : 'GitHub только публичный',
+        caps.railway ? 'Railway подключён' : 'Railway не настроен'
+      ];
+      if (status) status.textContent = `Связь есть. ${parts.join(', ')}.`;
+    } catch (err) {
+      if (status) status.textContent = `Не вышло: ${err.message}`;
+    }
+    return;
+  }
+  if (a === 'chat-starter') {
+    await sendChatMessage(el.dataset.text || '');
+    return;
+  }
+  if (a === 'chat-clear') {
+    clearChat();
+    return;
+  }
   if (a === 'sync-github') {
     const p = data.projects.find(x => x.id === id),
       github = validGithubUrl(p?.ai?.githubUrl || '');
@@ -197,14 +232,23 @@ async function onAction(el) {
     el.disabled = true;
     el.textContent = 'Проверяем…';
     try {
-      const response = await fetch(
-        `https://api.github.com/repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}/commits?per_page=1`,
-        { headers: { Accept: 'application/vnd.github+json' } }
-      );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const commits = await response.json();
-      if (!Array.isArray(commits) || !commits[0]) throw new Error('empty');
-      const commit = commits[0];
+      // С подключённым сервером работают и закрытые репозитории: токен GitHub
+      // лежит там. Без сервера остаётся прямой запрос — он видит только публичные.
+      let commit;
+      if (serverConfigured()) {
+        const result = await githubCommit(github);
+        if (result.empty) throw new Error('empty');
+        commit = { sha: result.sha, commit: { message: result.message, committer: { date: result.date } } };
+      } else {
+        const response = await fetch(
+          `https://api.github.com/repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}/commits?per_page=1`,
+          { headers: { Accept: 'application/vnd.github+json' } }
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const commits = await response.json();
+        if (!Array.isArray(commits) || !commits[0]) throw new Error('empty');
+        commit = commits[0];
+      }
       p.ai.githubSnapshot = {
         sha: String(commit.sha || ''),
         message: String(commit.commit?.message || '')
@@ -785,6 +829,12 @@ document.addEventListener('change', async event => {
   }
 });
 document.addEventListener('input', event => {
+  // Поле диалога растёт под длину сообщения и не прокручивается внутри себя.
+  if (event.target.matches?.('.chat-composer textarea')) {
+    const field = event.target;
+    field.style.height = 'auto';
+    field.style.height = `${field.scrollHeight}px`;
+  }
   if (event.target.matches?.('[data-prep-answer]')) {
     const target = event.target;
     if (
@@ -870,6 +920,11 @@ document.addEventListener('input', event => {
   }
 });
 document.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.shiftKey && event.target.matches?.('.chat-composer textarea')) {
+    event.preventDefault();
+    event.target.closest('form')?.requestSubmit();
+    return;
+  }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
     if (!$('#modal').open) commandCenter();
@@ -963,6 +1018,16 @@ document.addEventListener('pointercancel', () => {
 $('#modal').addEventListener('click', event => {
   if (event.target === $('#modal')) closeModal();
 });
+/**
+ * Переход по ярлыку, когда приложение уже открыто.
+ * Смена только хэша не перезагружает страницу, поэтому ярлык с домашнего
+ * экрана без этого обработчика оставлял пользователя на прежнем разделе.
+ */
+window.addEventListener('hashchange', () => {
+  const page = pageFromLocation();
+  if (page && page !== view.page) go(page);
+});
+
 const deepLink = pageFromLocation();
 if (deepLink) view.page = deepLink;
 rememberLocation();

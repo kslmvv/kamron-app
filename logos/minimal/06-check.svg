@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">Kamron APP — Сделано</title>
+  <rect width="512" height="512" fill="#203E55"/>
+  <rect x="117" y="117" width="278" height="278" rx="86" fill="none" stroke="#ADC9D4" stroke-width="13"/>
+  <path d="m172 259 59 59 112-124" fill="none" stroke="#F4F7F5" stroke-width="39" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="348" cy="189" r="13" fill="#D19A80"/>
+</svg>

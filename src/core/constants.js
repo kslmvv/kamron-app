@@ -17,6 +17,7 @@ export const LINKABLE_PAGES = [
   'home',
   'more',
   'jarvis',
+  'chat',
   'routine',
   'work',
   'uni',

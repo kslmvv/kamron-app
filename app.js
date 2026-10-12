@@ -10,6 +10,7 @@
     "home",
     "more",
     "jarvis",
+    "chat",
     "routine",
     "work",
     "uni",
@@ -204,10 +205,10 @@
         reject(new Error("no-indexeddb"));
         return;
       }
-      const request = indexedDB.open("kamron-app-files", 1);
-      request.onupgradeneeded = () => request.result.createObjectStore("materials");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      const request2 = indexedDB.open("kamron-app-files", 1);
+      request2.onupgradeneeded = () => request2.result.createObjectStore("materials");
+      request2.onsuccess = () => resolve(request2.result);
+      request2.onerror = () => reject(request2.error);
     });
   }
   async function fileTransaction(mode, callback) {
@@ -335,6 +336,134 @@
   };
   var svg = (name) => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]}</svg>`;
 
+  // src/features/api.js
+  function serverConfigured() {
+    return !!(data.server?.url && data.server?.token);
+  }
+  function endpoint(path) {
+    return `${String(data.server.url).replace(/\/+$/, "")}${path}`;
+  }
+  async function request(path, { method = "GET", body, timeout = 7e4 } = {}) {
+    if (!serverConfigured()) throw new Error("Сервер Jarvis не подключён");
+    const control = new AbortController();
+    const timer = setTimeout(() => control.abort(), timeout);
+    try {
+      const response = await fetch(endpoint(path), {
+        method,
+        headers: {
+          authorization: `Bearer ${data.server.token}`,
+          ...body ? { "content-type": "application/json" } : {}
+        },
+        body: body ? JSON.stringify(body) : void 0,
+        signal: control.signal
+      });
+      const text = await response.text();
+      let payload = {};
+      try {
+        payload = text ? JSON.parse(text) : {};
+      } catch (_) {
+        throw new Error("Сервер вернул не тот формат ответа");
+      }
+      if (!response.ok) throw new Error(payload.error || `Сервер ответил ошибкой ${response.status}`);
+      return payload;
+    } catch (err) {
+      if (err.name === "AbortError") throw new Error("Сервер не ответил за отведённое время");
+      if (err instanceof TypeError) throw new Error("Не удалось связаться с сервером. Проверьте адрес и сеть");
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  async function checkServer(url) {
+    const base = String(url || data.server?.url || "").replace(/\/+$/, "");
+    if (!base) throw new Error("Адрес сервера не указан");
+    const response = await fetch(`${base}/api/health`);
+    if (!response.ok) throw new Error(`Сервер ответил ошибкой ${response.status}`);
+    return response.json();
+  }
+  function snapshot() {
+    const key = today();
+    return {
+      today: dateKey(/* @__PURE__ */ new Date()),
+      name: data.name,
+      routine: dayItems(key).slice(0, 30).map((item) => ({
+        time: item.time,
+        title: item.title,
+        done: item.kind === "routine" ? routineCompleted(key, item.id) : false
+      })),
+      tasks: allOpenTasks().slice(0, 60).map((t) => ({ title: t.title, kind: t.kind, due: t.due || "", source: t.source || "" })),
+      lessons: data.subjects.flatMap(
+        (subject) => upcomingLessons(subject, 3).map((lesson) => ({
+          date: lesson.key,
+          time: subject.time || "",
+          subject: subject.name,
+          type: lesson.meeting?.type || ""
+        }))
+      ).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)).slice(0, 12),
+      projects: data.projects.slice(0, 20).map((p) => {
+        const open = (p.tasks || []).filter((t) => !t.doneAt);
+        return {
+          name: p.name,
+          open: open.length,
+          done: (p.tasks || []).length - open.length,
+          next: open[0]?.title || ""
+        };
+      }),
+      notes: data.notes.slice(0, 10).map((n) => ({ title: n.title || "", body: (n.body || "").slice(0, 300) }))
+    };
+  }
+  function jarvisChat(messages) {
+    return request("/api/jarvis/chat", { method: "POST", body: { messages, snapshot: snapshot() } });
+  }
+  function githubCommit(url) {
+    return request(`/api/github/commit?url=${encodeURIComponent(url)}`);
+  }
+
+  // src/features/chat.js
+  function ensure() {
+    if (!view.chat) view.chat = { messages: [], busy: false, error: "" };
+    return view.chat;
+  }
+  function scrollToEnd() {
+    const stream = $("#chat-stream");
+    if (stream) stream.scrollTop = stream.scrollHeight;
+  }
+  async function sendChatMessage(text) {
+    const message = String(text || "").trim();
+    const chat = ensure();
+    if (!message || chat.busy) return;
+    if (!serverConfigured()) {
+      toast("Сервер Jarvis не подключён");
+      return;
+    }
+    chat.messages.push({ role: "user", content: message.slice(0, 2e3) });
+    chat.busy = true;
+    chat.error = "";
+    render();
+    scrollToEnd();
+    try {
+      const result = await jarvisChat(chat.messages);
+      chat.messages.push({ role: "assistant", content: result.reply || "Пустой ответ" });
+    } catch (err) {
+      chat.error = err.message;
+      chat.pending = chat.messages.pop()?.content || "";
+    } finally {
+      chat.busy = false;
+      render();
+      scrollToEnd();
+      const field = document.querySelector(".chat-composer textarea");
+      if (field && chat.pending) {
+        field.value = chat.pending;
+        chat.pending = "";
+      }
+      field?.focus();
+    }
+  }
+  function clearChat() {
+    view.chat = { messages: [], busy: false, error: "" };
+    render();
+  }
+
   // src/views/settings.js
   function renderSettings() {
     const stats = gameStats(), next = nextThing();
@@ -355,6 +484,8 @@
       ${view.settingsMoreOpen ? `<div class="settings-more-panel"><div class="card settings-card"><div class="settings-row"><div><strong>Меньше анимаций</strong></div><label class="switch" aria-label="Меньше анимаций"><input type="checkbox" id="setting-motion" ${data.reduceMotion ? "checked" : ""}><span></span></label></div><div class="settings-row"><label for="setting-weekly-goal"><strong>Цель на неделю</strong></label><select id="setting-weekly-goal">${[3, 5, 7, 10, 15].map((n) => `<option value="${n}" ${data.weeklyGoal === n ? "selected" : ""}>${n} задач</option>`).join("")}</select></div></div>
         <button class="settings-destination" data-action="go" data-page="phone"><span class="settings-destination-icon">📞</span><span class="grow"><strong>Голос Jarvis</strong><small>План утром и отчёт вечером</small></span><span aria-hidden="true">›</span></button>
         <button class="settings-destination" data-action="go" data-page="tech"><span class="settings-destination-icon">🛠️</span><span class="grow"><strong>Jarvis · приложение</strong><small>Проверки и запросы на изменения</small></span><span aria-hidden="true">›</span></button>
+        <div class="settings-group-heading"><strong>Сервер Jarvis</strong></div>
+        <div class="card settings-card"><div class="settings-action-row"><div class="grow"><strong>${serverConfigured() ? "Подключён" : "Не подключён"}</strong><small>${serverConfigured() ? esc(data.server.url) : "Без сервера помощник работает только с локальными данными"}</small></div><button class="secondary-btn" data-action="server-form">${serverConfigured() ? "Изменить" : "Подключить"}</button></div></div>
         <div class="settings-group-heading"><strong>Данные</strong></div><div class="card settings-card"><div class="settings-action-row"><div class="grow"><strong>Сохранить копию</strong><small>Без вложенных файлов</small></div><button class="secondary-btn" data-action="export">Скачать</button></div><div class="settings-action-row"><div class="grow"><strong>Восстановить копию</strong></div><button class="secondary-btn" data-action="import">Выбрать</button></div><div class="settings-action-row reset-row"><div class="grow"><strong>Сбросить данные</strong></div><button class="text-btn danger-action" data-action="reset">Сбросить</button></div><input id="import-file" type="file" accept="application/json,.json" hidden></div>
         <details class="settings-preview"><summary>Виджет iPhone <span>образец</span></summary><div class="widget-preview"><div class="row"><span>◉ Kamron APP</span><strong>${esc(fmt(today(), { day: "numeric", month: "short" }))}</strong></div><p>${next ? `Далее: ${esc(next.item.title)} · ${next.item.time}` : "Сегодня всё спокойно"}<br>🔥 ${stats.streak} · ✦ ${stats.points} баллов</p></div><small>Рабочий виджет появится в нативной версии.</small></details>
         <p class="settings-footnote">Фоновые уведомления появятся в версии для iPhone.</p></div>` : ""}`;
@@ -439,6 +570,21 @@
   }
   async function submitForm(form) {
     const fd = new FormData(form), type = form.dataset.form, id = form.dataset.id;
+    if (type === "chat") return sendChatMessage(String(fd.get("text") || ""));
+    if (type === "server") {
+      const url = String(fd.get("url") || "").trim().replace(/\/+$/, "");
+      const token = String(fd.get("token") || "").trim();
+      if (url && !/^https:\/\//.test(url) && !/^http:\/\/localhost(:\d+)?$/.test(url)) {
+        toast("Адрес должен начинаться с https://");
+        return;
+      }
+      data.server = { url, token };
+      save();
+      closeModal(true);
+      toast(url && token ? "Сервер Jarvis подключён" : "Подключение сервера очищено");
+      render();
+      return;
+    }
     const previous = JSON.stringify(data);
     const createdFromTasks = view.page === "tasks";
     if (type === "seminar-prep") {
@@ -991,6 +1137,39 @@
       <div class="game-tabs">${tabs}</div><div class="game-panel game-${view.game}">${game}</div>`;
   }
 
+  // src/views/chat.js
+  var STARTERS = [
+    "Что у меня сегодня важного?",
+    "Какие задачи просрочены?",
+    "С чего начать по проектам?",
+    "Что подготовить к ближайшему занятию?"
+  ];
+  function renderChat() {
+    if (!serverConfigured()) {
+      return `${heading("JARVIS", "Живой диалог", "")}
+      ${empty("✦", "Сервер не подключён", "Диалог отвечает через ваш сервер: там живут ключи модели. Подключите его в настройках — Дополнительно, «Сервер Jarvis».")}
+      <button class="primary-btn" data-action="server-form">Подключить сервер</button>`;
+    }
+    const messages = view.chat?.messages || [];
+    const bubbles = messages.map(
+      (m) => `<div class="chat-bubble ${m.role === "user" ? "mine" : "his"}">${esc(m.content).replace(/\n/g, "<br>")}</div>`
+    ).join("");
+    return `${heading("JARVIS", "Живой диалог", "Отвечает по данным приложения на этом устройстве.")}
+      <div class="chat-stream" id="chat-stream">
+        ${bubbles || `<div class="chat-hint"><strong>Спросите что угодно о своём дне.</strong><small>Jarvis видит режим дня, задачи, занятия, проекты и заметки. Данные не сохраняются на сервере.</small></div>`}
+        ${view.chat?.busy ? '<div class="chat-bubble his pending">Думаю…</div>' : ""}
+        ${view.chat?.error ? `<div class="chat-error">${esc(view.chat.error)}</div>` : ""}
+      </div>
+      ${messages.length ? "" : `<div class="chat-starters">${STARTERS.map(
+      (s) => `<button class="chat-starter" data-action="chat-starter" data-text="${esc(s)}">${esc(s)}</button>`
+    ).join("")}</div>`}
+      <form class="chat-composer" data-form="chat">
+        <textarea name="text" rows="1" maxlength="2000" placeholder="Сообщение Jarvis" aria-label="Сообщение Jarvis" ${view.chat?.busy ? "disabled" : ""}></textarea>
+        <button class="chat-send" type="submit" aria-label="Отправить" ${view.chat?.busy ? "disabled" : ""}>↑</button>
+      </form>
+      ${messages.length ? '<button class="secondary-btn" data-action="chat-clear">Очистить разговор</button>' : ""}`;
+  }
+
   // src/views/gym.js
   function renderGym() {
     const logs = data.gym.filter((x) => x.date === view.date).slice().reverse(), month = view.date.slice(0, 7), monthCount = data.gym.filter((x) => x.date.startsWith(month)).length;
@@ -1053,6 +1232,12 @@
     return `${heading("ТВОЙ ПОМОЩНИК", "Jarvis", "")}
       <div class="jarvis-hero"><div class="jarvis-orb" aria-hidden="true">✦</div><div class="grow"><strong>Всё важное под рукой</strong><small>План дня, учёба, проекты и изменения приложения.</small></div></div>
       <div class="jarvis-list">
+        ${destination(
+      "💬",
+      "Живой диалог",
+      serverConfigured() ? "Спросить о дне, задачах и занятиях" : "Нужен подключённый сервер",
+      { action: "go", page: "chat" }
+    )}
         ${destination("📞", "Мой день", "Утренний план и вечерний отчёт", { action: "go", page: "phone" })}
         ${destination("🎓", "Учёба", subject ? "Подготовка к семинару" : "Сначала добавь предмет", subjectAction)}
         ${destination("💼", "Проекты", project ? "Контекст, GitHub и поручения" : "Сначала добавь проект", projectAction)}
@@ -1280,7 +1465,7 @@
       <div class="section-title">Проверка приложения <small>${issues ? `${issues} требуют внимания` : "всё в порядке"}</small></div>
       <div class="card tech-check-card">${checks.map((item) => `<div class="tech-check"><span class="${item.ok ? "good" : "attention"}">${item.ok ? "✓" : "!"}</span><div class="grow"><strong>${esc(item.title)}</strong><small>${esc(item.detail)}</small></div></div>`).join("")}${invalidRoutineDoneCount() ? `<button class="primary-btn tech-repair" data-action="repair-routine-data">Исправить отметки режима дня</button>` : ""}<button class="secondary-btn tech-refresh" data-action="run-tech-check">Проверить снова</button>${view.techCheckedAt ? `<p class="tech-check-time">Последняя проверка: ${esc(view.techCheckedAt)}</p>` : ""}</div>
       <div class="section-title">Мои запросы <small>${requests.length}</small></div>
-      ${requests.length ? requests.map((request) => `<div class="card tech-request-card"><div class="row"><span class="tech-request-kind">${esc({ bug: "Ошибка", design: "Дизайн", feature: "Функция" }[request.kind] || "Изменение")}</span><span class="tiny muted">${esc(fmt(request.createdAt.slice(0, 10), { day: "numeric", month: "short" }))}</span></div><strong>${esc(request.area || "Приложение")}</strong><p>${esc(request.description)}</p>${request.expected ? `<small>Нужно получить: ${esc(request.expected)}</small>` : ""}<div class="tech-request-actions"><button class="secondary-btn" data-action="download-tech-request" data-id="${safeId(request.id)}">Скачать задание</button><button class="text-btn" data-action="delete-tech-request" data-id="${safeId(request.id)}" aria-label="Удалить запрос">Удалить</button></div></div>`).join("") : `<div class="card tech-empty"><strong>Запросов пока нет</strong><p>Опишите баг или изменение — детали сохранятся на этом устройстве и войдут в резервную копию.</p></div>`}`;
+      ${requests.length ? requests.map((request2) => `<div class="card tech-request-card"><div class="row"><span class="tech-request-kind">${esc({ bug: "Ошибка", design: "Дизайн", feature: "Функция" }[request2.kind] || "Изменение")}</span><span class="tiny muted">${esc(fmt(request2.createdAt.slice(0, 10), { day: "numeric", month: "short" }))}</span></div><strong>${esc(request2.area || "Приложение")}</strong><p>${esc(request2.description)}</p>${request2.expected ? `<small>Нужно получить: ${esc(request2.expected)}</small>` : ""}<div class="tech-request-actions"><button class="secondary-btn" data-action="download-tech-request" data-id="${safeId(request2.id)}">Скачать задание</button><button class="text-btn" data-action="delete-tech-request" data-id="${safeId(request2.id)}" aria-label="Удалить запрос">Удалить</button></div></div>`).join("") : `<div class="card tech-empty"><strong>Запросов пока нет</strong><p>Опишите баг или изменение — детали сохранятся на этом устройстве и войдут в резервную копию.</p></div>`}`;
   }
 
   // src/views/uni.js
@@ -1495,6 +1680,7 @@
       home: renderHome,
       more: renderMore,
       jarvis: renderJarvis,
+      chat: renderChat,
       routine: renderRoutine,
       work: renderWork,
       project: renderProject,
@@ -1582,15 +1768,15 @@
     downloadText(lines.join("\n"), `seminar-${safeDownloadPart(prep.topic)}.md`);
     toast("Пакет подготовки скачан");
   }
-  function projectAiBrief(project, request) {
+  function projectAiBrief(project, request2) {
     const ai = project.ai || {};
     return [
       `# Jarvis · ${project.name}`,
-      `Поручение: ${request.title}`,
-      `Создано: ${request.createdAt}`,
+      `Поручение: ${request2.title}`,
+      `Создано: ${request2.createdAt}`,
       "",
       "## Что нужно сделать",
-      request.description,
+      request2.description,
       "",
       "## Цель проекта",
       ai.goal || "Не указана",
@@ -1620,22 +1806,22 @@
     setTimeout(() => URL.revokeObjectURL(url), 1e3);
     toast("Копия данных скачана");
   }
-  function techBrief(request) {
-    const kind = { bug: "Исправление ошибки", design: "Изменение дизайна", feature: "Новая функция" }[request.kind] || "Изменение";
+  function techBrief(request2) {
+    const kind = { bug: "Исправление ошибки", design: "Изменение дизайна", feature: "Новая функция" }[request2.kind] || "Изменение";
     const checks = techDiagnostics().map((x) => `- ${x.ok ? "OK" : "Проверить"}: ${x.title} — ${x.detail}`).join("\n");
     return `# Kamron APP — ${kind}
 
-Раздел: ${request.area}
-Создано: ${request.createdAt}
+Раздел: ${request2.area}
+Создано: ${request2.createdAt}
 Версия: ${APP_BUILD}
 
 ## Что нужно сделать
 
-${request.description}
+${request2.description}
 
 ## Ожидаемый результат
 
-${request.expected || "Уточнить по описанию выше."}
+${request2.expected || "Уточнить по описанию выше."}
 
 ## Состояние макета
 
@@ -1652,10 +1838,10 @@ ${checks}
 Проверьте изменение в смартфонном размере и не отмечайте пользовательские задачи выполненными автоматически. Для правки кода работайте с исходниками проекта; публикацию выполняйте отдельно после проверки.
 `;
   }
-  function downloadTechRequest(request) {
-    const blob = new Blob([techBrief(request)], { type: "text/markdown;charset=utf-8" }), url = URL.createObjectURL(blob), link = document.createElement("a");
+  function downloadTechRequest(request2) {
+    const blob = new Blob([techBrief(request2)], { type: "text/markdown;charset=utf-8" }), url = URL.createObjectURL(blob), link = document.createElement("a");
     link.href = url;
-    link.download = `kamron-izmenenie-${request.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 36)}.md`;
+    link.download = `kamron-izmenenie-${request2.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 36)}.md`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1e3);
     toast("Задание для Claude Code скачано");
@@ -1804,8 +1990,10 @@ ${checks}
     phone: defaultPhone(),
     gym: [],
     best: { block: 0, merge: 0, memory: 0 },
-    games: {}
+    games: {},
+    server: defaultServer()
   });
+  var defaultServer = () => ({ url: "", token: "" });
   function normalizeData(raw) {
     const fresh = defaults();
     const { focus: unusedFocus, focusHistory: unusedHistory, ...rest } = raw;
@@ -1919,9 +2107,16 @@ ${checks}
       days: Array.isArray(phoneRaw.days) ? [...new Set(phoneRaw.days.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))] : [0, 1, 2, 3, 4, 5, 6],
       reports
     };
+    const serverRaw = rest.server && typeof rest.server === "object" ? rest.server : {};
+    const serverUrl = String(serverRaw.url || "").trim();
+    const server = {
+      url: /^https:\/\/[^\s]+$/.test(serverUrl) || /^http:\/\/localhost(:\d+)?$/.test(serverUrl) ? serverUrl : "",
+      token: String(serverRaw.token || "").trim().slice(0, 200)
+    };
     return {
       ...fresh,
       ...rest,
+      server,
       projects,
       subjects,
       notes,
@@ -2431,6 +2626,22 @@ ${checks}
       `<form class="form-grid" data-form="project-note" data-parent="${safeId(parent)}" data-id="${safeId(id || "")}"><label>Что важно сохранить?<textarea name="text" required maxlength="4000" placeholder="Идея, решение или прогресс...">${esc(note?.text || "")}</textarea></label><div class="form-actions"><button type="button" class="secondary-btn" data-action="close-modal">Отмена</button><button class="primary-btn">${note ? "Сохранить" : "Добавить"}</button></div></form>`
     );
   }
+  function serverForm() {
+    const server = data.server || { url: "", token: "" };
+    openModal(
+      "Сервер Jarvis",
+      `<form class="form-grid" data-form="server">
+      <label>Адрес сервера<input name="url" type="url" inputmode="url" autocomplete="off" placeholder="https://kamron-app-server.up.railway.app" value="${esc(server.url)}"></label>
+      <label>Ключ доступа<input name="token" type="password" autocomplete="off" placeholder="Значение APP_ACCESS_TOKEN с сервера" value="${esc(server.token)}"></label>
+      <p class="form-note">Ключи Anthropic, OpenAI, GitHub и Railway вводятся только на сервере, в переменных окружения. В приложение их вводить не нужно.</p>
+      <div class="form-actions">
+        <button type="button" class="secondary-btn" data-action="server-check">Проверить связь</button>
+        <button class="primary-btn" type="submit">Сохранить</button>
+      </div>
+      <p class="form-note" id="server-status"></p>
+    </form>`
+    );
+  }
 
   // src/main.js
   async function onAction(el) {
@@ -2558,6 +2769,37 @@ ${checks}
       refreshPage(false);
       return;
     }
+    if (a === "server-form") {
+      serverForm();
+      return;
+    }
+    if (a === "server-check") {
+      const form = el.closest("form"), status = form?.querySelector("#server-status");
+      const url = form?.querySelector('input[name="url"]')?.value || "";
+      if (status) status.textContent = "Проверяем…";
+      try {
+        const health = await checkServer(url);
+        const caps = health.capabilities || {};
+        const parts = [
+          health.configured ? "ключ доступа задан" : "на сервере не задан APP_ACCESS_TOKEN",
+          caps.jarvis ? `модель: ${caps.provider}` : "модель не настроена",
+          caps.githubPrivate ? "GitHub с токеном" : "GitHub только публичный",
+          caps.railway ? "Railway подключён" : "Railway не настроен"
+        ];
+        if (status) status.textContent = `Связь есть. ${parts.join(", ")}.`;
+      } catch (err) {
+        if (status) status.textContent = `Не вышло: ${err.message}`;
+      }
+      return;
+    }
+    if (a === "chat-starter") {
+      await sendChatMessage(el.dataset.text || "");
+      return;
+    }
+    if (a === "chat-clear") {
+      clearChat();
+      return;
+    }
     if (a === "sync-github") {
       const p = data.projects.find((x) => x.id === id), github = validGithubUrl(p?.ai?.githubUrl || "");
       if (!p || !github) return;
@@ -2565,14 +2807,21 @@ ${checks}
       el.disabled = true;
       el.textContent = "Проверяем…";
       try {
-        const response = await fetch(
-          `https://api.github.com/repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}/commits?per_page=1`,
-          { headers: { Accept: "application/vnd.github+json" } }
-        );
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const commits = await response.json();
-        if (!Array.isArray(commits) || !commits[0]) throw new Error("empty");
-        const commit = commits[0];
+        let commit;
+        if (serverConfigured()) {
+          const result = await githubCommit(github);
+          if (result.empty) throw new Error("empty");
+          commit = { sha: result.sha, commit: { message: result.message, committer: { date: result.date } } };
+        } else {
+          const response = await fetch(
+            `https://api.github.com/repos/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}/commits?per_page=1`,
+            { headers: { Accept: "application/vnd.github+json" } }
+          );
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const commits = await response.json();
+          if (!Array.isArray(commits) || !commits[0]) throw new Error("empty");
+          commit = commits[0];
+        }
         p.ai.githubSnapshot = {
           sha: String(commit.sha || ""),
           message: String(commit.commit?.message || "").split("\n")[0].slice(0, 300),
@@ -2740,8 +2989,8 @@ ${checks}
       return;
     }
     if (a === "download-tech-request") {
-      const request = data.techRequests.find((x) => x.id === id);
-      if (request) downloadTechRequest(request);
+      const request2 = data.techRequests.find((x) => x.id === id);
+      if (request2) downloadTechRequest(request2);
       return;
     }
     if (a === "delete-tech-request") {
@@ -3130,6 +3379,11 @@ ${checks}
     }
   });
   document.addEventListener("input", (event) => {
+    if (event.target.matches?.(".chat-composer textarea")) {
+      const field = event.target;
+      field.style.height = "auto";
+      field.style.height = `${field.scrollHeight}px`;
+    }
     if (event.target.matches?.("[data-prep-answer]")) {
       const target = event.target;
       if (rt.pendingPrepAnswer && (rt.pendingPrepAnswer.id !== target.dataset.prep || rt.pendingPrepAnswer.key !== target.dataset.prepAnswer))
@@ -3203,6 +3457,11 @@ ${checks}
     }
   });
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && event.target.matches?.(".chat-composer textarea")) {
+      event.preventDefault();
+      event.target.closest("form")?.requestSubmit();
+      return;
+    }
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
       event.preventDefault();
       if (!$("#modal").open) commandCenter();
@@ -3288,6 +3547,10 @@ ${checks}
   });
   $("#modal").addEventListener("click", (event) => {
     if (event.target === $("#modal")) closeModal();
+  });
+  window.addEventListener("hashchange", () => {
+    const page = pageFromLocation();
+    if (page && page !== view.page) go(page);
   });
   var deepLink = pageFromLocation();
   if (deepLink) view.page = deepLink;

@@ -207,3 +207,26 @@ export function projectNoteForm(parent, id) {
     `<form class="form-grid" data-form="project-note" data-parent="${safeId(parent)}" data-id="${safeId(id || '')}"><label>Что важно сохранить?<textarea name="text" required maxlength="4000" placeholder="Идея, решение или прогресс...">${esc(note?.text || '')}</textarea></label><div class="form-actions"><button type="button" class="secondary-btn" data-action="close-modal">Отмена</button><button class="primary-btn">${note ? 'Сохранить' : 'Добавить'}</button></div></form>`
   );
 }
+
+/**
+ * Подключение сервера Jarvis.
+ * Здесь вводится адрес сервиса и личный ключ доступа к нему. Ключи модели
+ * (Anthropic, OpenAI), GitHub и Railway сюда не вводятся никогда — они
+ * задаются переменными окружения на самом сервере.
+ */
+export function serverForm() {
+  const server = data.server || { url: '', token: '' };
+  openModal(
+    'Сервер Jarvis',
+    `<form class="form-grid" data-form="server">
+      <label>Адрес сервера<input name="url" type="url" inputmode="url" autocomplete="off" placeholder="https://kamron-app-server.up.railway.app" value="${esc(server.url)}"></label>
+      <label>Ключ доступа<input name="token" type="password" autocomplete="off" placeholder="Значение APP_ACCESS_TOKEN с сервера" value="${esc(server.token)}"></label>
+      <p class="form-note">Ключи Anthropic, OpenAI, GitHub и Railway вводятся только на сервере, в переменных окружения. В приложение их вводить не нужно.</p>
+      <div class="form-actions">
+        <button type="button" class="secondary-btn" data-action="server-check">Проверить связь</button>
+        <button class="primary-btn" type="submit">Сохранить</button>
+      </div>
+      <p class="form-note" id="server-status"></p>
+    </form>`
+  );
+}

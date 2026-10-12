@@ -2,6 +2,7 @@
 import { allOpenTasks, gameStats, nextThing, routineProgress, streak } from '../core/selectors.js';
 import { data } from '../core/state.js';
 import { $, esc, fmt, plural, safeId, today } from '../core/utils.js';
+import { serverConfigured } from '../features/api.js';
 import { heading } from '../ui/components.js';
 import { go } from '../ui/shell.js';
 
@@ -73,6 +74,12 @@ export function renderJarvis() {
   return `${heading('ТВОЙ ПОМОЩНИК', 'Jarvis', '')}
       <div class="jarvis-hero"><div class="jarvis-orb" aria-hidden="true">✦</div><div class="grow"><strong>Всё важное под рукой</strong><small>План дня, учёба, проекты и изменения приложения.</small></div></div>
       <div class="jarvis-list">
+        ${destination(
+          '💬',
+          'Живой диалог',
+          serverConfigured() ? 'Спросить о дне, задачах и занятиях' : 'Нужен подключённый сервер',
+          { action: 'go', page: 'chat' }
+        )}
         ${destination('📞', 'Мой день', 'Утренний план и вечерний отчёт', { action: 'go', page: 'phone' })}
         ${destination('🎓', 'Учёба', subject ? 'Подготовка к семинару' : 'Сначала добавь предмет', subjectAction)}
         ${destination('💼', 'Проекты', project ? 'Контекст, GitHub и поручения' : 'Сначала добавь проект', projectAction)}
