@@ -51,7 +51,15 @@ import { persistGames } from './games/index.js';
 import { flipMemory, newMemory } from './games/memory.js';
 import { moveMerge, newMerge } from './games/merge.js';
 import { empty } from './ui/components.js';
-import { go, jumpToProjectNote, jumpToTask, refreshPage, render } from './ui/shell.js';
+import {
+  go,
+  jumpToProjectNote,
+  jumpToTask,
+  pageFromLocation,
+  refreshPage,
+  rememberLocation,
+  render
+} from './ui/shell.js';
 import { repairRoutineHistory } from './views/tech.js';
 
 async function onAction(el) {
@@ -955,6 +963,9 @@ document.addEventListener('pointercancel', () => {
 $('#modal').addEventListener('click', event => {
   if (event.target === $('#modal')) closeModal();
 });
+const deepLink = pageFromLocation();
+if (deepLink) view.page = deepLink;
+rememberLocation();
 render();
 checkReminders();
 setInterval(checkReminders, 30000);

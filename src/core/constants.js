@@ -9,7 +9,26 @@ export const TASK_POINTS = 50;
 
 export const ROUTINE_POINTS = 10;
 
-export const APP_BUILD = 'MVP 0.19';
+/** Подставляется сборщиком из package.json — см. tools/build.mjs. */
+export const APP_BUILD = typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'MVP (dev)';
+
+/** Экраны, которые открываются без выбранного проекта, предмета или подготовки. */
+export const LINKABLE_PAGES = [
+  'home',
+  'more',
+  'jarvis',
+  'routine',
+  'work',
+  'uni',
+  'gym',
+  'notes',
+  'games',
+  'settings',
+  'phone',
+  'tech',
+  'tasks',
+  'insights'
+];
 
 export const EMOJI = ['🚀', '💼', '💡', '🎨', '📱', '⚡', '🌿', '📚', '🧩', '🎯', '🛠️', '🪐'];
 

@@ -1,11 +1,53 @@
 {
+  "id": "./",
   "name": "Kamron APP — мой день",
   "short_name": "Kamron APP",
-  "description": "Личный центр дня",
+  "description": "Личный центр дня: режим дня, работа, университет, зал, заметки и Jarvis.",
+  "lang": "ru",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
   "background_color": "#e9f2fb",
   "theme_color": "#e9f2fb",
-  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+  "categories": ["productivity", "education", "lifestyle"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    { "src": "./icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Режим дня",
+      "short_name": "День",
+      "url": "./index.html#routine",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Все задачи",
+      "short_name": "Задачи",
+      "url": "./index.html#tasks",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Заметки",
+      "short_name": "Заметки",
+      "url": "./index.html#notes",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Jarvis",
+      "short_name": "Jarvis",
+      "url": "./index.html#jarvis",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

@@ -136,7 +136,7 @@ export function techBrief(request) {
   const checks = techDiagnostics()
     .map(x => `- ${x.ok ? 'OK' : 'Проверить'}: ${x.title} — ${x.detail}`)
     .join('\n');
-  return `# Kamron APP — ${kind}\n\nРаздел: ${request.area}\nСоздано: ${request.createdAt}\nВерсия: ${APP_BUILD}\n\n## Что нужно сделать\n\n${request.description}\n\n## Ожидаемый результат\n\n${request.expected || 'Уточнить по описанию выше.'}\n\n## Состояние макета\n\n${checks}\n\n## Файлы\n\n- index.html — оболочка приложения\n- styles.css — интерфейс\n- app.js — логика\n- README.md — описание поведения\n\nПроверьте изменение в смартфонном размере и не отмечайте пользовательские задачи выполненными автоматически. Для правки кода работайте с исходниками проекта; публикацию выполняйте отдельно после проверки.\n`;
+  return `# Kamron APP — ${kind}\n\nРаздел: ${request.area}\nСоздано: ${request.createdAt}\nВерсия: ${APP_BUILD}\n\n## Что нужно сделать\n\n${request.description}\n\n## Ожидаемый результат\n\n${request.expected || 'Уточнить по описанию выше.'}\n\n## Состояние макета\n\n${checks}\n\n## Файлы\n\n- index.html — оболочка приложения\n- styles.css — интерфейс\n- src/ — исходный код по модулям (core, ui, views, forms, games, features)\n- app.js — сборка из src/, редактировать напрямую нельзя\n- README.md — описание поведения\n\nПроверьте изменение в смартфонном размере и не отмечайте пользовательские задачи выполненными автоматически. Для правки кода работайте с исходниками проекта; публикацию выполняйте отдельно после проверки.\n`;
 }
 
 export function downloadTechRequest(request) {

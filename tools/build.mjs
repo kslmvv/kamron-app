@@ -54,5 +54,7 @@ if (watch) {
   const result = await build({ ...options, metafile: true });
   syncServiceWorker();
   const out = Object.values(result.metafile.outputs).find(o => o.entryPoint);
-  console.log(`app.js собран: ${(out.bytes / 1024).toFixed(1)} КБ, модулей: ${Object.keys(result.metafile.inputs).length}`);
+  console.log(
+    `app.js собран: ${(out.bytes / 1024).toFixed(1)} КБ, модулей: ${Object.keys(result.metafile.inputs).length}`
+  );
 }

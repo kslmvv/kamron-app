@@ -1,5 +1,5 @@
 /** Каркас: верхняя панель, нижняя навигация, переходы и перерисовка страницы. */
-import { THEMES } from '../core/constants.js';
+import { LINKABLE_PAGES, THEMES } from '../core/constants.js';
 import { svg } from '../core/icons.js';
 import { data, resolveTheme, scrollMemory, view } from '../core/state.js';
 import { $, today } from '../core/utils.js';
@@ -65,6 +65,7 @@ export function go(page, id = null) {
   if (page === 'gym' && view.page !== 'gym') view.date = today();
   view.page = page;
   view.id = id;
+  rememberLocation();
   render();
   pageEl.scrollTop = restore ? scrollMemory.get(`${page}:${id || ''}`) || 0 : 0;
   pageEl.classList.add('page-enter');
@@ -139,4 +140,28 @@ export function render() {
     tech: renderTech
   };
   page.innerHTML = (map[view.page] || renderHome)();
+}
+
+/**
+ * Экран в адресной строке.
+ *
+ * Нужен в двух местах: ярлыки приложения на домашнем экране открывают
+ * ссылку вида index.html#routine, и перезагрузка страницы возвращает
+ * туда же, где пользователь был. История при этом не растёт — для
+ * возврата в приложении есть собственная кнопка.
+ */
+export function rememberLocation() {
+  if (!LINKABLE_PAGES.includes(view.page)) return;
+  try {
+    const next = view.page === 'home' ? ' ' : `#${view.page}`;
+    if (location.hash !== next.trim()) history.replaceState(null, '', next);
+  } catch (_) {
+    /* file:// запрещает replaceState — адрес просто останется прежним */
+  }
+}
+
+/** Экран из адреса при запуске: только разделы, которым не нужен выбранный объект. */
+export function pageFromLocation() {
+  const name = (location.hash || '').replace('#', '');
+  return LINKABLE_PAGES.includes(name) ? name : null;
 }

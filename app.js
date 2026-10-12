@@ -5,7 +5,23 @@
   var DAY = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   var TASK_POINTS = 50;
   var ROUTINE_POINTS = 10;
-  var APP_BUILD = "MVP 0.19";
+  var APP_BUILD = true ? "MVP 0.20" : "MVP (dev)";
+  var LINKABLE_PAGES = [
+    "home",
+    "more",
+    "jarvis",
+    "routine",
+    "work",
+    "uni",
+    "gym",
+    "notes",
+    "games",
+    "settings",
+    "phone",
+    "tech",
+    "tasks",
+    "insights"
+  ];
   var EMOJI = ["🚀", "💼", "💡", "🎨", "📱", "⚡", "🌿", "📚", "🧩", "🎯", "🛠️", "🪐"];
   var SHAPES = [
     [[0, 0]],
@@ -360,7 +376,7 @@
     return `${parts.year}-${parts.month}-${parts.day}`;
   }
   function renderPhone() {
-    const p = data.phone, key = voiceToday(), agenda = phoneAgenda(key), tomorrow = phoneAgenda(addDays(key, 1)), report = p.reports?.[key] || emptyVoiceReport(), history = Object.entries(p.reports || {}).filter(([reportKey]) => reportKey < key).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
+    const p = data.phone, key = voiceToday(), agenda = phoneAgenda(key), tomorrow = phoneAgenda(addDays(key, 1)), report = p.reports?.[key] || emptyVoiceReport(), history2 = Object.entries(p.reports || {}).filter(([reportKey]) => reportKey < key).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
     const dayButtons = [1, 2, 3, 4, 5, 6, 0].map(
       (day) => `<label class="voice-day"><input type="checkbox" name="days" value="${day}" ${p.days.includes(day) ? "checked" : ""}><span>${DAY[day]}</span></label>`
     ).join("");
@@ -370,7 +386,7 @@
       <div class="voice-two"><div class="card voice-summary"><span class="eyebrow">УТРО · ${esc(p.morning)}</span><strong>План на сегодня</strong><ul>${formatItems(agenda.events)}</ul>${agenda.tasks.length ? `<small>Задачи: ${esc(agenda.tasks.join(" · "))}</small>` : ""}</div><div class="card voice-summary"><span class="eyebrow">ЗАВТРА</span><strong>Что ждёт впереди</strong><ul>${formatItems(tomorrow.events)}</ul></div></div>
       <div class="section-title">Когда связываться</div>
       <form class="card voice-form" data-form="phone"><div class="voice-time-grid"><label>Утренний разговор<input type="time" name="morning" value="${esc(p.morning)}" required></label><label>Вечерний разбор<input type="time" name="evening" value="${esc(p.evening)}" required></label></div><div class="voice-days" role="group" aria-label="Дни звонков">${dayButtons}</div><label>Тон общения<select name="tone"><option value="supportive" ${p.tone === "supportive" ? "selected" : ""}>Поддерживающий</option><option value="direct" ${p.tone === "direct" ? "selected" : ""}>Прямой</option><option value="strict" ${p.tone === "strict" ? "selected" : ""}>Строгий, без оскорблений</option></select></label><label>Ваш профиль Telegram<input type="text" name="telegramUser" inputmode="text" autocomplete="off" placeholder="@username" value="${esc(p.telegramUser)}" maxlength="33"></label><p class="settings-note">Время — Ташкент (UTC+5). Профиль понадобится отдельному аккаунту помощника, чтобы позвонить именно вам. Код Telegram и пароль сюда не вводите.</p><button class="primary-btn" type="submit">Сохранить сценарий</button></form>
-      <div class="section-title">Вечерний отчёт <small>${esc(fmt(key, { day: "numeric", month: "long" }))}</small></div><form class="card voice-form" data-form="phone-report"><label>Что получилось сегодня?<textarea name="done" rows="2" maxlength="1000" placeholder="Что сделал, где продвинулся">${esc(report.done)}</textarea></label><label>Что не получилось?<textarea name="missed" rows="2" maxlength="1000" placeholder="Что осталось открытым">${esc(report.missed)}</textarea></label><label>Что помешало?<textarea name="reason" rows="2" maxlength="1000" placeholder="Причина без оправданий">${esc(report.reason)}</textarea></label><label>Главный шаг завтра<input name="tomorrow" maxlength="250" placeholder="Одно конкретное действие" value="${esc(report.tomorrow)}"></label><button class="secondary-btn" type="submit">Сохранить отчёт</button></form>${history.length ? `<div class="section-title">Прошлые отчёты</div>${history.map(([key2, r]) => `<div class="card voice-history"><strong>${esc(fmt(key2, { day: "numeric", month: "long" }))}</strong><p>${esc(r.done || "Побед не записано")}</p>${r.missed ? `<small>Не получилось: ${esc(r.missed)}</small>` : ""}</div>`).join("")}` : ""}
+      <div class="section-title">Вечерний отчёт <small>${esc(fmt(key, { day: "numeric", month: "long" }))}</small></div><form class="card voice-form" data-form="phone-report"><label>Что получилось сегодня?<textarea name="done" rows="2" maxlength="1000" placeholder="Что сделал, где продвинулся">${esc(report.done)}</textarea></label><label>Что не получилось?<textarea name="missed" rows="2" maxlength="1000" placeholder="Что осталось открытым">${esc(report.missed)}</textarea></label><label>Что помешало?<textarea name="reason" rows="2" maxlength="1000" placeholder="Причина без оправданий">${esc(report.reason)}</textarea></label><label>Главный шаг завтра<input name="tomorrow" maxlength="250" placeholder="Одно конкретное действие" value="${esc(report.tomorrow)}"></label><button class="secondary-btn" type="submit">Сохранить отчёт</button></form>${history2.length ? `<div class="section-title">Прошлые отчёты</div>${history2.map(([key2, r]) => `<div class="card voice-history"><strong>${esc(fmt(key2, { day: "numeric", month: "long" }))}</strong><p>${esc(r.done || "Побед не записано")}</p>${r.missed ? `<small>Не получилось: ${esc(r.missed)}</small>` : ""}</div>`).join("")}` : ""}
       <details class="card voice-explain"><summary>Как заработают звонки</summary><p>Помощнику понадобится отдельный пользовательский аккаунт Telegram: ботам звонки недоступны. Сервер по расписанию начнёт вызов через Telegram-клиент и передаст звук в OpenAI GPT‑Live. Для работы нужны отдельный аккаунт, защищённый сервер и проверка звукового моста; один HTML-файл не может звонить в фоне.</p></details>`;
   }
 
@@ -1427,6 +1443,7 @@
     if (page === "gym" && view.page !== "gym") view.date = today();
     view.page = page;
     view.id = id;
+    rememberLocation();
     render();
     pageEl.scrollTop = restore ? scrollMemory.get(`${page}:${id || ""}`) || 0 : 0;
     pageEl.classList.add("page-enter");
@@ -1495,6 +1512,18 @@
       tech: renderTech
     };
     page.innerHTML = (map[view.page] || renderHome)();
+  }
+  function rememberLocation() {
+    if (!LINKABLE_PAGES.includes(view.page)) return;
+    try {
+      const next = view.page === "home" ? " " : `#${view.page}`;
+      if (location.hash !== next.trim()) history.replaceState(null, "", next);
+    } catch (_) {
+    }
+  }
+  function pageFromLocation() {
+    const name = (location.hash || "").replace("#", "");
+    return LINKABLE_PAGES.includes(name) ? name : null;
   }
 
   // src/features/export.js
@@ -1616,7 +1645,8 @@ ${checks}
 
 - index.html — оболочка приложения
 - styles.css — интерфейс
-- app.js — логика
+- src/ — исходный код по модулям (core, ui, views, forms, games, features)
+- app.js — сборка из src/, редактировать напрямую нельзя
 - README.md — описание поведения
 
 Проверьте изменение в смартфонном размере и не отмечайте пользовательские задачи выполненными автоматически. Для правки кода работайте с исходниками проекта; публикацию выполняйте отдельно после проверки.
@@ -3259,6 +3289,9 @@ ${checks}
   $("#modal").addEventListener("click", (event) => {
     if (event.target === $("#modal")) closeModal();
   });
+  var deepLink = pageFromLocation();
+  if (deepLink) view.page = deepLink;
+  rememberLocation();
   render();
   checkReminders();
   setInterval(checkReminders, 3e4);
