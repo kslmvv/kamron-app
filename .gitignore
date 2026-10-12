@@ -7,3 +7,4 @@ dist/
 !.env.example
 Kamron-APP-MVP.zip
 dist-zip/
+.tmp-reg/

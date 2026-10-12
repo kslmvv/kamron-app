@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Kamron APP — Мои дела</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dcebf7"/><stop offset="1" stop-color="#edf1f5"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".97"/><stop offset="1" stop-color="#d4e5f3" stop-opacity=".9"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="13" stdDeviation="12" flood-color="#41617e" flood-opacity=".2"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <rect x="111" y="149" width="263" height="247" rx="46" transform="rotate(-12 111 149)" fill="#6b927f"/>
+    <rect x="157" y="111" width="263" height="247" rx="46" transform="rotate(10 157 111)" fill="#bd846e"/>
+    <rect x="133" y="134" width="247" height="247" rx="47" fill="url(#glass)" stroke="#fff" stroke-width="8"/>
+  </g>
+  <path d="M188 201h118M188 250h100" stroke="#8eabc3" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="197" cy="315" r="28" fill="#2774bd"/>
+  <path d="m184 315 9 9 18-21" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M247 315h59" stroke="#8eabc3" stroke-width="18" stroke-linecap="round"/>
+</svg>

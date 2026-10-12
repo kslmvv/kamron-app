@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Kamron APP — Ключ K</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ecf1f3"/><stop offset="1" stop-color="#cfdee5"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".84"/><stop offset="1" stop-color="#e4f1f6" stop-opacity=".55"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="15" stdDeviation="15" flood-color="#3e5a68" flood-opacity=".19"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect x="98" y="98" width="316" height="316" rx="98" fill="url(#glass)" stroke="#fff" stroke-width="8" filter="url(#shadow)"/>
+  <path d="M184 156v200" fill="none" stroke="#223e52" stroke-width="40" stroke-linecap="round"/>
+  <path d="m211 258 117-102m-117 102 117 101" fill="none" stroke="#2871a5" stroke-width="39" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="330" cy="153" r="21" fill="#6b967e" stroke="#fff" stroke-width="6"/>
+  <circle cx="332" cy="361" r="21" fill="#c5816a" stroke="#fff" stroke-width="6"/>
+  <circle cx="184" cy="256" r="11" fill="#f6fbfd"/>
+</svg>

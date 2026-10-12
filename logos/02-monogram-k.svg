@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Kamron APP — Монограмма K</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#142a44"/><stop offset=".58" stop-color="#1b3f69"/><stop offset="1" stop-color="#426b93"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".27"/><stop offset="1" stop-color="#a8cef2" stop-opacity=".09"/></linearGradient>
+    <linearGradient id="letter" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d8eaff"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="19" stdDeviation="16" flood-color="#071b30" flood-opacity=".34"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="92" cy="65" r="198" fill="#a6cef3" opacity=".07"/>
+  <rect x="96" y="96" width="320" height="320" rx="94" fill="url(#glass)" stroke="#fff" stroke-opacity=".3" stroke-width="4" filter="url(#shadow)"/>
+  <path d="M185 155v202m5-98 135-107M210 247l125 111" fill="none" stroke="url(#letter)" stroke-width="43" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="340" cy="357" r="18" fill="#d88e76"/>
+  <path d="M124 135c19-19 43-27 68-29" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="7" stroke-linecap="round"/>
+</svg>

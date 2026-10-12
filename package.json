@@ -1,0 +1,22 @@
+{
+  "name": "kamron-app",
+  "version": "0.20.0",
+  "private": true,
+  "description": "Kamron APP — личный центр дня: режим дня, работа, универ, зал, заметки, Jarvis и игры. PWA без внешних зависимостей.",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "watch": "node tools/build.mjs --watch",
+    "icons": "node tools/icons.mjs",
+    "serve": "node tools/serve.mjs",
+    "format": "prettier --write \"**/*.{js,mjs,css,html,json,md}\"",
+    "check": "node tools/check.mjs"
+  },
+  "devDependencies": {
+    "acorn": "^8.19.0",
+    "acorn-walk": "^8.3.5",
+    "esbuild": "^0.25.0",
+    "prettier": "^3.9.0",
+    "sharp": "^0.34.0"
+  }
+}

@@ -1,4 +1,4 @@
-const CACHE = 'kamron-app-mvp-v19';
+const CACHE = 'kamron-app-v0.20.0';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

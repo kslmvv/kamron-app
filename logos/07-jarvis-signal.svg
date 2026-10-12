@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Kamron APP — Сигнал Jarvis</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#13243b"/><stop offset="1" stop-color="#315879"/></linearGradient>
+    <radialGradient id="core"><stop stop-color="#fff"/><stop offset=".62" stop-color="#d7ecff"/><stop offset="1" stop-color="#8cbce3"/></radialGradient>
+    <filter id="glow"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#8bc7f3" flood-opacity=".5"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="158" fill="#fff" fill-opacity=".08" stroke="#fff" stroke-opacity=".24" stroke-width="6"/>
+  <path d="M179 179a109 109 0 0 0 0 154m154-154a109 109 0 0 1 0 154" fill="none" stroke="#a9d7f5" stroke-width="19" stroke-linecap="round" opacity=".9"/>
+  <path d="M146 141a162 162 0 0 0 0 230m220-230a162 162 0 0 1 0 230" fill="none" stroke="#a9d7f5" stroke-opacity=".45" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="68" fill="url(#core)" stroke="#fff" stroke-opacity=".82" stroke-width="7" filter="url(#glow)"/>
+  <path d="m256 218 9 29 29 9-29 9-9 29-9-29-29-9 29-9z" fill="#275d95"/>
+  <circle cx="354" cy="156" r="14" fill="#d99378"/>
+</svg>
