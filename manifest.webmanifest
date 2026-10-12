@@ -1,0 +1,11 @@
+{
+  "name": "Kamron APP — мой день",
+  "short_name": "Kamron APP",
+  "description": "Личный центр дня",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e9f2fb",
+  "theme_color": "#e9f2fb",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
