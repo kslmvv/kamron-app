@@ -1,5 +1,9 @@
 /** Настройки сервера. Всё приходит из переменных окружения — ключей в коде нет. */
-const list = value => (value || '').split(',').map(s => s.trim()).filter(Boolean);
+const list = value =>
+  (value || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 
 export const config = {
   port: Number(process.env.PORT) || 8080,

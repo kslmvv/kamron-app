@@ -6,14 +6,17 @@ export const github = Router();
 
 /** Из ссылки вида https://github.com/owner/repo(/...) достаём владельца и имя. */
 export function parseRepo(url) {
-  const match = /^https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:[/?#]|$)/i.exec(String(url || ''));
+  const match = /^https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:[/?#]|$)/i.exec(
+    String(url || '')
+  );
   return match ? { owner: match[1], repo: match[2] } : null;
 }
 
 github.get('/commit', async (req, res, next) => {
   try {
     const target = parseRepo(req.query.url);
-    if (!target) return res.status(400).json({ error: 'Нужна ссылка вида https://github.com/владелец/репозиторий' });
+    if (!target)
+      return res.status(400).json({ error: 'Нужна ссылка вида https://github.com/владелец/репозиторий' });
 
     const headers = { accept: 'application/vnd.github+json', 'user-agent': 'kamron-app' };
     if (config.githubToken) headers.authorization = `Bearer ${config.githubToken}`;

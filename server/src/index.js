@@ -59,5 +59,7 @@ app.listen(config.port, () => {
   console.log(`  модель: ${caps.jarvis ? config.provider : 'не настроена'}`);
   console.log(`  GitHub: ${caps.githubPrivate ? 'с токеном (закрытые репозитории)' : 'только публичные'}`);
   console.log(`  Railway: ${caps.railway ? 'подключён' : 'не настроен'}`);
-  console.log(`  разрешённые источники: ${config.allowedOrigins.join(', ') || 'нет — браузер получит отказ'}`);
+  console.log(
+    `  разрешённые источники: ${config.allowedOrigins.join(', ') || 'нет — браузер получит отказ'}`
+  );
 });

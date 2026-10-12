@@ -26,16 +26,21 @@ function describe(snapshot = {}) {
   if (snapshot.tasks?.length) {
     lines.push('\nОткрытые задачи:');
     for (const t of snapshot.tasks.slice(0, 60))
-      lines.push(`- [${t.kind}] ${t.title}${t.due ? ` (срок ${t.due})` : ''}${t.source ? ` — ${t.source}` : ''}`);
+      lines.push(
+        `- [${t.kind}] ${t.title}${t.due ? ` (срок ${t.due})` : ''}${t.source ? ` — ${t.source}` : ''}`
+      );
   }
   if (snapshot.lessons?.length) {
     lines.push('\nБлижайшие занятия:');
-    for (const l of snapshot.lessons.slice(0, 20)) lines.push(`- ${l.date} ${l.time} ${l.subject} (${l.type})`);
+    for (const l of snapshot.lessons.slice(0, 20))
+      lines.push(`- ${l.date} ${l.time} ${l.subject} (${l.type})`);
   }
   if (snapshot.projects?.length) {
     lines.push('\nПроекты:');
     for (const p of snapshot.projects.slice(0, 20))
-      lines.push(`- ${p.name}: открыто ${p.open}, выполнено ${p.done}${p.next ? `, следующий шаг — ${p.next}` : ''}`);
+      lines.push(
+        `- ${p.name}: открыто ${p.open}, выполнено ${p.done}${p.next ? `, следующий шаг — ${p.next}` : ''}`
+      );
   }
   if (snapshot.notes?.length) {
     lines.push('\nПоследние заметки:');

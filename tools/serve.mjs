@@ -12,10 +12,14 @@ import { dirname, join, extname, normalize } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PORT) || 4173;
 const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
-  '.webmanifest': 'application/manifest+json; charset=utf-8', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.map': 'application/json'
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.map': 'application/json'
 };
 
 http
@@ -27,7 +31,10 @@ http
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       return res.end('Файл не найден');
     }
-    res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    res.writeHead(200, {
+      'content-type': MIME[extname(file)] || 'application/octet-stream',
+      'cache-control': 'no-store'
+    });
     res.end(readFileSync(file));
   })
   .listen(port, () => console.log(`Kamron APP: http://localhost:${port}`));

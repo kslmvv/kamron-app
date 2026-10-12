@@ -126,7 +126,9 @@ await step('личная задача', async () => {
   await go('#tasks');
   await page.click('[data-action="new-task-hub"]').catch(() => {});
   await page.waitForTimeout(300);
-  const personal = page.locator('[data-action="choose-task-kind"][data-kind="personal"], [data-action="new-personal-task"]').first();
+  const personal = page
+    .locator('[data-action="choose-task-kind"][data-kind="personal"], [data-action="new-personal-task"]')
+    .first();
   if (await personal.count()) {
     await personal.click();
     await page.waitForTimeout(300);
@@ -166,12 +168,17 @@ await step('импорт копии возвращает все записи', a
   await go('#settings');
   await page.click('[data-action="toggle-settings-more"]');
   await page.waitForTimeout(200);
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('[data-action="import"]')]);
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.click('[data-action="import"]')
+  ]);
   await chooser.setFiles(path);
   await page.waitForTimeout(700);
   const after = await page.evaluate(() => JSON.parse(localStorage.getItem('kamron-app-mvp-v1') || 'null'));
   if (!after) throw new Error('после импорта данных нет');
-  const lost = ['projects', 'subjects', 'notes', 'personalTasks'].filter(k => (after[k] || []).length !== (before[k] || []).length);
+  const lost = ['projects', 'subjects', 'notes', 'personalTasks'].filter(
+    k => (after[k] || []).length !== (before[k] || []).length
+  );
   if (lost.length) throw new Error('потеряно: ' + lost.join(', '));
 });
 
@@ -187,7 +194,8 @@ await step('проверка связи с сервером', async () => {
   await page.fill('#modal input[name="token"]', 'secret-key');
   await page.click('[data-action="server-check"]');
   await page.waitForTimeout(500);
-  if (!/Связь есть/.test(await page.textContent('#server-status'))) throw new Error(await page.textContent('#server-status'));
+  if (!/Связь есть/.test(await page.textContent('#server-status')))
+    throw new Error(await page.textContent('#server-status'));
 });
 await step('подключение сохраняется', async () => {
   await save();
@@ -207,7 +215,8 @@ await step('диалог отвечает и видит снимок дня', as
 await step('очистка разговора', async () => {
   await page.click('[data-action="chat-clear"]');
   await page.waitForTimeout(250);
-  if (!/Спросите что угодно/.test(await page.textContent('#chat-stream'))) throw new Error('лента не очищена');
+  if (!/Спросите что угодно/.test(await page.textContent('#chat-stream')))
+    throw new Error('лента не очищена');
 });
 await step('ошибка сервера показана, вопрос возвращается в поле', async () => {
   await page.evaluate(() => {
@@ -221,7 +230,8 @@ await step('ошибка сервера показана, вопрос возв�
   await page.click('.chat-send');
   await page.waitForTimeout(700);
   if (!/Неверный ключ доступа/.test(await page.textContent('#page'))) throw new Error('ошибка не показана');
-  if ((await page.inputValue('.chat-composer textarea')) !== 'Проверка ошибки') throw new Error('вопрос потерян');
+  if ((await page.inputValue('.chat-composer textarea')) !== 'Проверка ошибки')
+    throw new Error('вопрос потерян');
   await page.evaluate(() => {
     const d = JSON.parse(localStorage.getItem('kamron-app-mvp-v1'));
     d.server.token = 'secret-key';
@@ -241,7 +251,10 @@ await step('тема, ответ и разбор от Jarvis', async () => {
   await page.fill('#modal input[name="topic"]', 'Теория международных режимов');
   await save();
   await page.waitForTimeout(400);
-  await page.locator('[data-prep-answer]').first().fill('Режимы — это нормы и правила, вокруг которых сходятся ожидания государств.');
+  await page
+    .locator('[data-prep-answer]')
+    .first()
+    .fill('Режимы — это нормы и правила, вокруг которых сходятся ожидания государств.');
   await page.waitForTimeout(400);
   await page.locator('[data-action="prep-review"]').first().click();
   await page.waitForTimeout(900);
@@ -251,7 +264,8 @@ await step('пакет подготовки скачивается с читае
   await page.click('[data-action="export-prep"]');
   await page.waitForTimeout(700);
   // Имя с кириллицей браузер отбрасывает — проверяем, что осталась латиница и расширение
-  if (!downloads.some(f => /^seminar-[a-z0-9-]+\.md$/.test(f))) throw new Error('файлы: ' + downloads.join(', '));
+  if (!downloads.some(f => /^seminar-[a-z0-9-]+\.md$/.test(f)))
+    throw new Error('файлы: ' + downloads.join(', '));
 });
 
 console.log('\nИгры');

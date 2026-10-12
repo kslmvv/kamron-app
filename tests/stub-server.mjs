@@ -27,7 +27,14 @@ export function stubServer(port) {
           JSON.stringify({
             ok: true,
             configured: true,
-            capabilities: { jarvis: true, seminar: true, github: true, githubPrivate: true, railway: false, provider: 'anthropic' }
+            capabilities: {
+              jarvis: true,
+              seminar: true,
+              github: true,
+              githubPrivate: true,
+              railway: false,
+              provider: 'anthropic'
+            }
           })
         );
       }
@@ -50,7 +57,9 @@ export function stubServer(port) {
           );
         }
         if (req.url.startsWith('/api/seminar/review'))
-          return res.end(JSON.stringify({ review: 'Разбор ответов: основное верно, уточните определение.', model: 'stub' }));
+          return res.end(
+            JSON.stringify({ review: 'Разбор ответов: основное верно, уточните определение.', model: 'stub' })
+          );
         res.end(JSON.stringify({ questions: ['Вопрос 1', 'Вопрос 2'], model: 'stub' }));
       });
     });
@@ -61,8 +70,13 @@ export function stubServer(port) {
 /** Простая отдача статики: приложение открывается так же, как с хостинга. */
 export function staticServer(dir, port) {
   const MIME = {
-    '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-    '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.map': 'application/json'
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.css': 'text/css',
+    '.webmanifest': 'application/manifest+json',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.map': 'application/json'
   };
   return new Promise(async resolve => {
     const { default: fs } = await import('node:fs');
