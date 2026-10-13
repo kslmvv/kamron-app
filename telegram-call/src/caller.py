@@ -108,10 +108,10 @@ class Caller:
 
             # Ждём конца реплики, но не дольше предела: зависший звонок
             # не должен висеть на линии и жечь минуты.
-            # calls — обычное свойство со списком активных звонков, не корутина.
+            # calls — асинхронное свойство: словарь активных звонков по chat_id.
             while asyncio.get_running_loop().time() - started < config.max_call_seconds:
                 await asyncio.sleep(1)
-                active = {call.chat_id for call in self.calls.calls}
+                active = await self.calls.calls
                 if target.id not in active:
                     log.info("Звонок завершился сам через %.1f с", asyncio.get_running_loop().time() - started)
                     break
