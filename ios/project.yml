@@ -1,0 +1,36 @@
+# Описание проекта для XcodeGen. Файл .xcodeproj руками не пишется и в
+# репозиторий не кладётся: он генерируется из этого описания одной командой,
+# а значит не ломается при слиянии и не тянет за собой чужие локальные пути.
+name: KamronAPP
+options:
+  bundleIdPrefix: com.kslmvv
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    MARKETING_VERSION: "0.20.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    # Команду подписи Xcode подставит сам при первом запуске на устройстве.
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  KamronAPP:
+    type: application
+    platform: iOS
+    sources:
+      # Info.plist исключён из ресурсов: иначе Xcode получает два задания
+      # на один и тот же файл и сборка падает на конфликте.
+      - path: KamronAPP
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kslmvv.kamronapp
+        PRODUCT_NAME: Kamron APP
+        INFOPLIST_FILE: KamronAPP/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_USER_SCRIPT_SANDBOXING: YES

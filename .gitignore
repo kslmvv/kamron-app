@@ -15,3 +15,8 @@ dist-zip/
 # Временный файл переноса истории между машинами
 .transfer.bundle
 __pycache__/
+
+# Xcode генерирует проект из ios/project.yml — в репозитории его нет.
+ios/*.xcodeproj
+ios/DerivedData/
+ios/build/
