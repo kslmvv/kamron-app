@@ -11,7 +11,7 @@
 """
 import asyncio
 
-from telethon import TelegramClient
+from telethon import TelegramClient, functions
 from telethon.errors import (
     PhoneCodeExpiredError,
     PhoneCodeInvalidError,
@@ -48,8 +48,24 @@ async def main() -> None:
     print("Код состоит из 5 цифр.")
     print()
 
-    for attempt in range(3):
-        code = input("Код: ").strip()
+    print("Если код не приходит — введите resend: Telegram попробует следующий способ,")
+    print("обычно это голосовой звонок с продиктованным кодом.")
+    print()
+
+    for attempt in range(5):
+        code = input("Код (или resend): ").strip()
+        if code.lower() == "resend":
+            try:
+                sent = await client(
+                    functions.auth.ResendCodeRequest(
+                        phone_number=phone, phone_code_hash=sent.phone_code_hash
+                    )
+                )
+                kind = type(sent.type).__name__
+                print(f"Теперь Telegram отправил код: {WHERE.get(kind, kind)}")
+            except Exception as error:  # noqa: BLE001 — причина отказа нужна целиком
+                print(f"Перезапрос не прошёл: {type(error).__name__}: {error}")
+            continue
         try:
             await client.sign_in(phone, code, phone_code_hash=sent.phone_code_hash)
             break
@@ -64,7 +80,7 @@ async def main() -> None:
             await client.sign_in(password=password)
             break
     else:
-        print("Три неудачные попытки. Запустите скрипт заново чуть позже.")
+        print("Попытки исчерпаны. Запустите скрипт заново через 15-20 минут.")
         await client.disconnect()
         return
 
