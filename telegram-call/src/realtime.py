@@ -32,6 +32,7 @@ URL = "wss://api.openai.com/v1/realtime"
 PRICE = {
     "audio_in": 10.0,
     "audio_cached": 0.30,
+    "text_cached": 0.06,
     "audio_out": 20.0,
     "text_in": 0.60,
     "text_out": 2.40,
@@ -48,11 +49,17 @@ class RealtimeSession:
         # что уже вынуто из очереди в буфер отправки.
         self.flush_requested = False
         self.actions: list[dict] = []
+        # Пока ответ модели идёт, запрашивать новый нельзя: сервер отвечает
+        # отказом. Когда вызовов несколько, второй и третий как раз в это
+        # и упирались, и исход вызова оставался непроизнесённым.
+        self._answering = False
+        self._owed_answer = False
         self.usage = {
             "audio_in": 0,
             "audio_cached": 0,
             "audio_out": 0,
             "text_in": 0,
+            "text_cached": 0,
             "text_out": 0,
         }
         self._session: aiohttp.ClientSession | None = None
@@ -109,7 +116,9 @@ class RealtimeSession:
                     continue
                 event = json.loads(message.data)
                 kind = event.get("type")
-                if kind == "response.output_audio.delta":
+                if kind == "response.created":
+                    self._answering = True
+                elif kind == "response.output_audio.delta":
                     self.outgoing.put_nowait(base64.b64decode(event["delta"]))
                 elif kind == "input_audio_buffer.speech_started":
                     # Человек заговорил — выбрасываем недосказанное,
@@ -122,7 +131,11 @@ class RealtimeSession:
                     # нельзя останавливать, иначе звук модели встанет.
                     asyncio.create_task(self._run_tool(event))
                 elif kind == "response.done":
+                    self._answering = False
                     self._count(event.get("response", {}).get("usage"))
+                    if self._owed_answer:
+                        self._owed_answer = False
+                        await self._ws.send_json({"type": "response.create"})
                 elif kind == "error":
                     log.error("Ошибка Realtime: %s", event.get("error"))
         except asyncio.CancelledError:
@@ -156,8 +169,12 @@ class RealtimeSession:
                 },
             }
         )
-        # Без этого модель ждёт и молчит: исход вызова сам речью не станет.
-        await self._ws.send_json({"type": "response.create"})
+        # Без ответа модель молчит: исход вызова сам речью не станет. Но
+        # просить ответ поверх идущего нельзя — тогда дождёмся его конца.
+        if self._answering:
+            self._owed_answer = True
+        else:
+            await self._ws.send_json({"type": "response.create"})
 
     def _count(self, usage: dict | None) -> None:
         """Складывает токены ответа. Без этого стоимость разговора — догадка."""
@@ -165,12 +182,15 @@ class RealtimeSession:
             return
         incoming = usage.get("input_token_details") or {}
         outgoing = usage.get("output_token_details") or {}
-        cached = (incoming.get("cached_tokens_details") or {}).get("audio_tokens", 0)
-        audio_in = incoming.get("audio_tokens", 0)
-        self.usage["audio_cached"] += cached
-        # Кэшированные токены считаются отдельно и стоят в тридцать раз меньше.
-        self.usage["audio_in"] += max(0, audio_in - cached)
-        self.usage["text_in"] += incoming.get("text_tokens", 0)
+        cached_details = incoming.get("cached_tokens_details") or {}
+        cached_audio = cached_details.get("audio_tokens", 0)
+        cached_text = cached_details.get("text_tokens", 0)
+        # Кэшированные токены считаются отдельно: звук дешевле в тридцать
+        # раз, текст — в десять. Без этого расход завышается в разы.
+        self.usage["audio_cached"] += cached_audio
+        self.usage["audio_in"] += max(0, incoming.get("audio_tokens", 0) - cached_audio)
+        self.usage["text_cached"] += cached_text
+        self.usage["text_in"] += max(0, incoming.get("text_tokens", 0) - cached_text)
         self.usage["audio_out"] += outgoing.get("audio_tokens", 0)
         self.usage["text_out"] += outgoing.get("text_tokens", 0)
 
