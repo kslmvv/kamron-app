@@ -6,7 +6,6 @@
 моделью здесь нет: он дороже на два порядка, и строить его имеет смысл
 только после того, как звонок подтверждён.
 """
-import asyncio
 import hmac
 
 from aiohttp import web
@@ -53,17 +52,26 @@ async def call(request: web.Request) -> web.Response:
         return web.json_response({"error": str(error)}, status=409)
 
 
-async def build() -> web.Application:
-    app = web.Application()
-    app.add_routes([web.get("/", health), web.get("/health", health), web.post("/call", call)])
+async def on_startup(app: web.Application) -> None:
+    """
+    Подключение к Telegram обязано происходить в том же событийном цикле,
+    в котором потом работает сервер: Telethon запоминает цикл при соединении
+    и отказывается работать из другого. Поэтому вход здесь, а не до run_app.
+    """
     await caller.start()
     missing = config.missing()
     print(f"Сервис звонков: порт {config.port}")
     print(f"  аккаунт: {'авторизован' if caller.authorized else 'НЕ авторизован'}")
     print(f"  не задано: {', '.join(missing) if missing else 'всё на месте'}")
     print(f"  пределы: {config.max_calls_per_day} звонков в сутки, {config.max_call_seconds} с на звонок")
+
+
+def build() -> web.Application:
+    app = web.Application()
+    app.add_routes([web.get("/", health), web.get("/health", health), web.post("/call", call)])
+    app.on_startup.append(on_startup)
     return app
 
 
 if __name__ == "__main__":
-    web.run_app(asyncio.get_event_loop().run_until_complete(build()), port=config.port)
+    web.run_app(build(), port=config.port)
