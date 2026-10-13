@@ -95,6 +95,16 @@ TOOLS = [
     },
     {
         "type": "function",
+        "name": "end_call",
+        "description": (
+            "Завершить звонок. Вызывать, когда человек сказал «конец связи» или "
+            "иначе ясно дал понять, что разговор окончен. Перед вызовом коротко "
+            "попрощайся — после него связь обрывается."
+        ),
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "type": "function",
         "name": "complete_task",
         "description": (
             "Отметить задачу сделанной. Название брать из списка задач, который дан "
@@ -143,6 +153,10 @@ async def apply(name: str, arguments: dict) -> str:
     """
     if not config.jarvis_url:
         return "Не записано: приложение не подключено"
+
+    if name == "end_call":
+        # Отбой делает звонящая сторона: здесь только подтверждение.
+        return "Связь завершается"
 
     kinds = {
         "add_task": "task",

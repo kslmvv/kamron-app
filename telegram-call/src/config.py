@@ -9,6 +9,13 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, "") or default)
+    except ValueError:
+        return default
+
+
 class Config:
     port = _int("PORT", 8080)
     access_token = os.environ.get("APP_ACCESS_TOKEN", "")
@@ -34,7 +41,13 @@ class Config:
     # жёсткие и заданы по умолчанию, а не «когда-нибудь настроим».
     max_calls_per_day = _int("MAX_CALLS_PER_DAY", 2)
     max_call_seconds = _int("MAX_CALL_SECONDS", 90)
-    max_talk_seconds = _int("MAX_TALK_SECONDS", 180)
+    # Разговор заканчивает человек словом «конец связи». Предел — страховка
+    # на случай, если он забудет или связь зависнет.
+    max_talk_seconds = _int("MAX_TALK_SECONDS", 420)
+
+    # Потолок расхода за сутки. Бюджет на модель маленький, и один
+    # затянувшийся разговор не должен съесть недельную долю.
+    max_day_cost = _float("MAX_DAY_COST", 0.40)
 
     # Расписание звонков. Время местное для указанной зоны.
     morning_at = os.environ.get("MORNING_AT", "06:30")

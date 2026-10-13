@@ -54,6 +54,8 @@ class RealtimeSession:
         # и упирались, и исход вызова оставался непроизнесённым.
         self._answering = False
         self._owed_answer = False
+        # Человек сказал кодовое слово — договариваем и кладём трубку.
+        self.should_end = False
         self.usage = {
             "audio_in": 0,
             "audio_cached": 0,
@@ -152,6 +154,8 @@ class RealtimeSession:
         except json.JSONDecodeError:
             arguments = {}
         self.actions.append({"действие": name, "аргументы": arguments})
+        if name == "end_call":
+            self.should_end = True
         try:
             result = await apply(name, arguments)
         except Exception as error:  # noqa: BLE001 — молчать об отказе нельзя
@@ -171,6 +175,9 @@ class RealtimeSession:
         )
         # Без ответа модель молчит: исход вызова сам речью не станет. Но
         # просить ответ поверх идущего нельзя — тогда дождёмся его конца.
+        if self.should_end:
+            # Прощание уже сказано, добавлять нечего.
+            return
         if self._answering:
             self._owed_answer = True
         else:
@@ -197,6 +204,27 @@ class RealtimeSession:
     def cost(self) -> dict:
         dollars = sum(self.usage[key] * PRICE[key] / 1_000_000 for key in PRICE)
         return {"токены": dict(self.usage), "доллары": round(dollars, 4)}
+
+    async def notify(self, text: str) -> None:
+        """
+        Служебная реплика модели — например, что время на исходе.
+        Текстом, а не голосом: человек её не слышит, она только для модели.
+        """
+        if self.closed or not self._ws or self._ws.closed:
+            return
+        try:
+            await self._ws.send_json(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "system",
+                        "content": [{"type": "input_text", "text": text}],
+                    },
+                }
+            )
+        except Exception as error:  # noqa: BLE001 — предупреждение не главное
+            log.warning("Служебная реплика не ушла: %s", error)
 
     async def send_audio(self, pcm: bytes) -> None:
         if self.closed or not self._ws or self._ws.closed:

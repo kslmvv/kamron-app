@@ -103,6 +103,7 @@ class Caller:
             "предел_длительности_сек": config.max_call_seconds,
             "предел_разговора_сек": config.max_talk_seconds,
             "расход_сегодня_долларов": round(state.cost, 4),
+            "предел_расхода_в_сутки": config.max_day_cost,
             "счёт_на_диске": state.persistent,
         }
 
@@ -216,13 +217,34 @@ class Caller:
         spoke = 0.0
         next_frame = loop.time()
         frames = 0
+        warned = False
+        # Прощание надо договорить, но не бесконечно: если модель молчит
+        # полторы секунды, значит сказала всё.
+        ending_since = None
         while True:
-            if loop.time() > deadline:
+            now = loop.time()
+            if now > deadline:
                 log.info("Предел разговора %s с достигнут", config.max_talk_seconds)
                 break
+            # За минуту до предела предупреждаем модель — сама она времени
+            # не видит и обрывается на полуслове.
+            if not warned and now > deadline - 60:
+                warned = True
+                await session.notify(
+                    "Служебное: до конца связи осталась минута. Заверши мысль и попрощайся."
+                )
+            if session.should_end:
+                if not buffer and session.outgoing.empty():
+                    if ending_since is None:
+                        ending_since = now
+                    elif now - ending_since > 1.5:
+                        log.info("Завершаю по слову собеседника")
+                        break
+                else:
+                    ending_since = None
             # Раз в секунду проверяем, не положил ли собеседник трубку:
             # делать это на каждом кадре — сто проверок в секунду.
-            if frames % 100 == 0 and chat_id not in await self.calls.calls:
+            if frames % 100 == 0 and chat_id not in await self.calls.calls:  # noqa: E501
                 log.info("Собеседник положил трубку")
                 break
             if session.flush_requested:
@@ -266,6 +288,10 @@ class Caller:
         state.roll()
         if state.calls >= config.max_calls_per_day:
             raise RuntimeError(f"Дневной предел звонков исчерпан ({config.max_calls_per_day})")
+        if state.cost >= config.max_day_cost:
+            raise RuntimeError(
+                f"Дневной предел расхода исчерпан (${state.cost:.3f} из ${config.max_day_cost})"
+            )
         if self._busy.locked():
             raise RuntimeError("Звонок уже идёт")
 
