@@ -26,6 +26,16 @@ FRAME_BYTES = SAMPLE_RATE // 100 * 2
 SILENCE = b"\x00" * FRAME_BYTES
 URL = "wss://api.openai.com/v1/realtime"
 
+# Цены gpt-realtime-2.1-mini, доллары за миллион токенов.
+# Бюджет маленький, поэтому расход считается по факту, а не на глаз.
+PRICE = {
+    "audio_in": 10.0,
+    "audio_cached": 0.30,
+    "audio_out": 20.0,
+    "text_in": 0.60,
+    "text_out": 2.40,
+}
+
 
 class RealtimeSession:
     """Один разговор. Входящий звук отдаём методом, исходящий забираем из очереди."""
@@ -36,6 +46,13 @@ class RealtimeSession:
         # Человек заговорил — всё недосказанное надо выбросить, включая то,
         # что уже вынуто из очереди в буфер отправки.
         self.flush_requested = False
+        self.usage = {
+            "audio_in": 0,
+            "audio_cached": 0,
+            "audio_out": 0,
+            "text_in": 0,
+            "text_out": 0,
+        }
         self._session: aiohttp.ClientSession | None = None
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._reader: asyncio.Task | None = None
@@ -94,12 +111,33 @@ class RealtimeSession:
                     while not self.outgoing.empty():
                         self.outgoing.get_nowait()
                     self.flush_requested = True
+                elif kind == "response.done":
+                    self._count(event.get("response", {}).get("usage"))
                 elif kind == "error":
                     log.error("Ошибка Realtime: %s", event.get("error"))
         except asyncio.CancelledError:
             raise
         except Exception as error:  # noqa: BLE001 — разговор важнее исключения
             log.error("Чтение Realtime прервано: %s", error)
+
+    def _count(self, usage: dict | None) -> None:
+        """Складывает токены ответа. Без этого стоимость разговора — догадка."""
+        if not usage:
+            return
+        incoming = usage.get("input_token_details") or {}
+        outgoing = usage.get("output_token_details") or {}
+        cached = (incoming.get("cached_tokens_details") or {}).get("audio_tokens", 0)
+        audio_in = incoming.get("audio_tokens", 0)
+        self.usage["audio_cached"] += cached
+        # Кэшированные токены считаются отдельно и стоят в тридцать раз меньше.
+        self.usage["audio_in"] += max(0, audio_in - cached)
+        self.usage["text_in"] += incoming.get("text_tokens", 0)
+        self.usage["audio_out"] += outgoing.get("audio_tokens", 0)
+        self.usage["text_out"] += outgoing.get("text_tokens", 0)
+
+    def cost(self) -> dict:
+        dollars = sum(self.usage[key] * PRICE[key] / 1_000_000 for key in PRICE)
+        return {"токены": dict(self.usage), "доллары": round(dollars, 4)}
 
     async def send_audio(self, pcm: bytes) -> None:
         if self.closed or not self._ws or self._ws.closed:

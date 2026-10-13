@@ -47,6 +47,7 @@ class Caller:
         self.session: RealtimeSession | None = None
         self._day = ""
         self._today_calls = 0
+        self._today_cost = 0.0
         self._busy = asyncio.Lock()
 
     async def start(self) -> None:
@@ -91,6 +92,7 @@ class Caller:
         if self._day != today:
             self._day = today
             self._today_calls = 0
+            self._today_cost = 0.0
 
     def quota(self) -> dict:
         self._roll()
@@ -98,6 +100,8 @@ class Caller:
             "звонков_сегодня": self._today_calls,
             "предел_в_сутки": config.max_calls_per_day,
             "предел_длительности_сек": config.max_call_seconds,
+            "предел_разговора_сек": config.max_talk_seconds,
+            "расход_сегодня_долларов": round(self._today_cost, 4),
         }
 
     async def call_and_say(self, text: str) -> dict:
@@ -297,12 +301,15 @@ class Caller:
                 self.session = None
                 await self.hang_up(target.id)
 
+            spend = session.cost()
+            self._today_cost += spend["доллары"]
             return {
                 "дозвонился": True,
                 "вид": kind,
                 "секунд": round(loop.time() - started, 1),
                 "секунд_речи_модели": round(spoke, 1),
                 "снимок_минут": age,
+                "расход": spend,
                 "квота": self.quota(),
             }
 
