@@ -45,6 +45,7 @@ class Caller:
         self.calls: PyTgCalls | None = None
         self.me = None
         self.session: RealtimeSession | None = None
+        self._frames_seen = False
         self._busy = asyncio.Lock()
 
     async def start(self) -> None:
@@ -67,12 +68,25 @@ class Caller:
                 # Нас интересует только то, что пришло с линии: SPEAKER +
                 # INCOMING. MICROPHONE — наш же исходящий поток, его
                 # отправлять модели нельзя, иначе она услышит сама себя.
+                #
+                # Сравнение побитовое, а не на равенство: это флаги, и в
+                # одном поле может прийти объединение (SPEAKER | CAMERA).
+                # На равенстве фильтр молча не пропускал ни одного кадра —
+                # модель говорила, но собеседника не слышала.
                 session = self.session
                 if (
                     session
-                    and update.direction == Direction.INCOMING
-                    and update.device == Device.SPEAKER
+                    and (update.direction & Direction.INCOMING)
+                    and (update.device & Device.SPEAKER)
                 ):
+                    if not self._frames_seen:
+                        self._frames_seen = True
+                        log.info(
+                            "Первый кадр с линии: %s | %s | %d байт",
+                            update.direction,
+                            update.device,
+                            len(update.frames[0].frame) if update.frames else 0,
+                        )
                     for frame in update.frames:
                         await session.send_audio(frame.frame)
                 return
@@ -265,6 +279,7 @@ class Caller:
             target = await self.client.get_entity(config.target)
             snapshot, age = await fetch_snapshot()
             session = RealtimeSession(instructions_for(kind, snapshot, age))
+            self._frames_seen = False
             loop = asyncio.get_running_loop()
             started = loop.time()
             try:
