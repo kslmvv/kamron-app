@@ -7,6 +7,11 @@
 
 ## Сборка
 
+Двойной щелчок по файлу **«Собрать проект.command»** в этой папке. Он
+доставит xcodegen, если его нет, соберёт файл проекта и откроет Xcode.
+
+То же вручную:
+
 ```sh
 brew install xcodegen          # один раз
 cd "/Users/macbook/Desktop/Kamron APP/ios"
