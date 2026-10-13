@@ -159,13 +159,22 @@ class Caller:
         """
         Поднимает звонок с внешним звуком.
 
-        ExternalMedia на мобильной сети встаёт не всегда: в ntgcalls есть
-        известная беда — медиаканал либо соединяется за секунду, либо не
-        соединяется вовсе, и помогает повторный набор. Поэтому набираем
-        до трёх раз; это один звонок по квоте, а не три.
+        ExternalMedia встаёт не всегда: в ntgcalls есть известная беда —
+        вызов звонит, его принимают, а медиаканал не соединяется, и через
+        десять секунд приходит пустой TelegramServerError. Помогает только
+        повторный набор. Это один звонок по квоте, а не три.
+
+        Пауза между попытками длинная не от лени: сразу после сорванного
+        звонка Telegram ещё держит номер занятым и отвечает CallBusy.
         """
         last = None
         for attempt in range(1, 4):
+            if attempt > 1:
+                pause = 25
+                log.info("Жду %d с, прежде чем набрать снова", pause)
+                await asyncio.sleep(pause)
+                # Остатки прошлой попытки держат номер занятым.
+                await self.hang_up(chat_id)
             try:
                 await self.calls.play(
                     chat_id,
@@ -184,10 +193,10 @@ class Caller:
                 return
             except Exception as error:  # noqa: BLE001 — решение принимаем по исходу
                 last = error
-                log.warning("Попытка %d не удалась: %s: %s", attempt, type(error).__name__, error)
+                log.warning(
+                    "Попытка %d не удалась: %s: %s", attempt, type(error).__name__, error
+                )
                 await self.hang_up(chat_id)
-                if attempt < 3:
-                    await asyncio.sleep(3)
         raise last
 
     async def _pump(self, chat_id: int, session: RealtimeSession, deadline: float) -> float:
