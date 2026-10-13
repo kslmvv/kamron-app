@@ -7,6 +7,7 @@
 только после того, как звонок подтверждён.
 """
 import hmac
+import logging
 
 from aiohttp import web
 
@@ -50,6 +51,12 @@ async def call(request: web.Request) -> web.Response:
         return web.json_response(await caller.call_and_say(text))
     except Exception as error:  # noqa: BLE001 — наружу уходит понятная причина
         return web.json_response({"error": str(error)}, status=409)
+
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.getLogger("pytgcalls").setLevel(logging.DEBUG)
+logging.getLogger("ntgcalls").setLevel(logging.DEBUG)
+logging.getLogger("telethon").setLevel(logging.INFO)
 
 
 async def on_startup(app: web.Application) -> None:
