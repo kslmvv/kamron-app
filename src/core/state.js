@@ -401,9 +401,16 @@ export function markReminded(key) {
   } catch (_) {}
 }
 
+/**
+ * Подписчики на сохранение. Нужны, чтобы синхронизация снимка с сервером
+ * не требовала импорта features/api.js в ядро: ядро не должно знать о сети.
+ */
+export const onSaved = [];
+
 export function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(data));
+    onSaved.forEach(fn => fn());
     return true;
   } catch (_) {
     toast('Не удалось сохранить. Проверьте память устройства и скачайте копию данных.');

@@ -1,10 +1,9 @@
 """
-Сервис звонков Kamron APP — спайк.
+Сервис звонков Kamron APP.
 
-Задача этого шага одна: выяснить, доходит ли реальный звонок от
-аккаунта-помощника до телефона и слышно ли в нём речь. Разговора с
-моделью здесь нет: он дороже на два порядка, и строить его имеет смысл
-только после того, как звонок подтверждён.
+Звонит сам по расписанию — утром и вечером; маршруты нужны для проверки
+и для внеплановых звонков. /call проигрывает одну реплику (дёшево, для
+проверки связи), /talk ведёт живой разговор с моделью.
 """
 import hmac
 import logging
@@ -13,6 +12,7 @@ from aiohttp import web
 
 from .caller import caller
 from .config import config
+from .schedule import scheduler
 
 
 def _authorized(request: web.Request) -> bool:
@@ -31,6 +31,7 @@ async def health(request: web.Request) -> web.Response:
             "не_задано": config.missing(),
             "аккаунт": getattr(caller.me, "username", None) or getattr(caller.me, "id", None),
             "квота": caller.quota(),
+            "расписание": scheduler.status(),
         }
     )
 
@@ -53,6 +54,23 @@ async def call(request: web.Request) -> web.Response:
         return web.json_response({"error": str(error)}, status=409)
 
 
+async def talk(request: web.Request) -> web.Response:
+    """Живой разговор с моделью. kind: morning или evening."""
+    if not _authorized(request):
+        return web.json_response({"error": "Неверный ключ доступа"}, status=401)
+    if not caller.authorized:
+        return web.json_response(
+            {"error": "Аккаунт-помощник не авторизован", "не_задано": config.missing()},
+            status=503,
+        )
+    body = await request.json() if request.can_read_body else {}
+    kind = (body.get("kind") or "morning").strip()
+    try:
+        return web.json_response(await caller.talk(kind))
+    except Exception as error:  # noqa: BLE001 — наружу уходит понятная причина
+        return web.json_response({"error": str(error)}, status=409)
+
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logging.getLogger("pytgcalls").setLevel(logging.DEBUG)
 logging.getLogger("ntgcalls").setLevel(logging.DEBUG)
@@ -70,12 +88,23 @@ async def on_startup(app: web.Application) -> None:
     print(f"Сервис звонков: порт {config.port}")
     print(f"  аккаунт: {'авторизован' if caller.authorized else 'НЕ авторизован'}")
     print(f"  не задано: {', '.join(missing) if missing else 'всё на месте'}")
-    print(f"  пределы: {config.max_calls_per_day} звонков в сутки, {config.max_call_seconds} с на звонок")
+    print(
+        f"  пределы: {config.max_calls_per_day} звонков в сутки, "
+        f"{config.max_talk_seconds} с на разговор"
+    )
+    scheduler.start()
 
 
 def build() -> web.Application:
     app = web.Application()
-    app.add_routes([web.get("/", health), web.get("/health", health), web.post("/call", call)])
+    app.add_routes(
+        [
+            web.get("/", health),
+            web.get("/health", health),
+            web.post("/call", call),
+            web.post("/talk", talk),
+        ]
+    )
     app.on_startup.append(on_startup)
     return app
 

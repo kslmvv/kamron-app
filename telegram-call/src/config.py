@@ -22,10 +22,25 @@ class Config:
     tts_model = os.environ.get("TTS_MODEL", "gpt-4o-mini-tts")
     tts_voice = os.environ.get("TTS_VOICE", "alloy")
 
-    # Звонок будит человека, поэтому предохранители жёсткие и заданы по умолчанию,
-    # а не «когда-нибудь настроим».
-    max_calls_per_day = _int("MAX_CALLS_PER_DAY", 6)
+    # Разговор идёт через Realtime API: он слышит человека и отвечает голосом.
+    realtime_model = os.environ.get("REALTIME_MODEL", "gpt-realtime-2.1-mini")
+    realtime_voice = os.environ.get("REALTIME_VOICE", "marin")
+
+    # Откуда брать снимок состояния приложения.
+    jarvis_url = os.environ.get("JARVIS_URL", "")
+    jarvis_token = os.environ.get("JARVIS_TOKEN", "")
+
+    # Звонок будит человека и стоит минутами разговора, поэтому предохранители
+    # жёсткие и заданы по умолчанию, а не «когда-нибудь настроим».
+    max_calls_per_day = _int("MAX_CALLS_PER_DAY", 2)
     max_call_seconds = _int("MAX_CALL_SECONDS", 90)
+    max_talk_seconds = _int("MAX_TALK_SECONDS", 180)
+
+    # Расписание звонков. Время местное для указанной зоны.
+    morning_at = os.environ.get("MORNING_AT", "06:30")
+    evening_at = os.environ.get("EVENING_AT", "21:00")
+    timezone = os.environ.get("TIMEZONE", "Asia/Tashkent")
+    schedule_enabled = os.environ.get("SCHEDULE_ENABLED", "1") not in ("0", "false", "")
 
     @classmethod
     def ready(cls) -> bool:

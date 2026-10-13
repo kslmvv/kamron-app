@@ -13,6 +13,7 @@ import { jarvis } from './routes/jarvis.js';
 import { seminar } from './routes/seminar.js';
 import { github } from './routes/github.js';
 import { railway } from './routes/railway.js';
+import { saveSnapshot, readSnapshot, snapshotAge } from './snapshot.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -51,11 +52,32 @@ app.get('/api/health', (req, res) => {
     ok: true,
     configured: !!config.accessToken,
     capabilities: capabilities(),
-    расход: spendReport()
+    расход: spendReport(),
+    снимокМинутНазад: snapshotAge()
   });
 });
 
-app.use('/api', requireToken, rateLimit(30));
+app.use('/api', requireToken, rateLimit(60));
+
+/**
+ * Снимок состояния приложения. Приложение присылает его при сохранении,
+ * сервис звонков читает перед разговором.
+ */
+app.post('/api/snapshot', (req, res) => {
+  const snapshot = req.body;
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    return res.status(400).json({ error: 'Нужен объект состояния' });
+  }
+  const saved = saveSnapshot(snapshot);
+  res.json({ ok: true, savedAt: saved.savedAt });
+});
+
+app.get('/api/snapshot', (req, res) => {
+  const snapshot = readSnapshot();
+  if (!snapshot) return res.status(404).json({ error: 'Снимок ещё не присылали' });
+  res.json({ snapshot, возрастМинут: snapshotAge() });
+});
+
 app.use('/api/jarvis', jarvis);
 app.use('/api/seminar', seminar);
 app.use('/api/github', github);

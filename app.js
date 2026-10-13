@@ -451,6 +451,24 @@
       notes: data.notes.slice(0, 10).map((n) => ({ title: n.title || "", body: (n.body || "").slice(0, 300) }))
     };
   }
+  var syncTimer = null;
+  var lastSent = "";
+  function syncSnapshot({ immediate = false } = {}) {
+    if (!serverConfigured()) return;
+    clearTimeout(syncTimer);
+    const send = async () => {
+      const body = snapshot();
+      const fingerprint = JSON.stringify(body);
+      if (fingerprint === lastSent) return;
+      try {
+        await request("/api/snapshot", { method: "POST", body, timeout: 15e3 });
+        lastSent = fingerprint;
+      } catch (_) {
+      }
+    };
+    if (immediate) return void send();
+    syncTimer = setTimeout(send, 4e3);
+  }
   function jarvisChat(messages) {
     return request("/api/jarvis/chat", { method: "POST", body: { messages, snapshot: snapshot() } });
   }
@@ -2250,9 +2268,11 @@ ${checks}
     } catch (_) {
     }
   }
+  var onSaved = [];
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(data));
+      onSaved.forEach((fn) => fn());
       return true;
     } catch (_) {
       toast("Не удалось сохранить. Проверьте память устройства и скачайте копию данных.");
@@ -3662,6 +3682,8 @@ ${checks}
     const page = pageFromLocation();
     if (page && page !== view.page) go(page);
   });
+  onSaved.push(() => syncSnapshot());
+  syncSnapshot({ immediate: true });
   var deepLink = pageFromLocation();
   if (deepLink) view.page = deepLink;
   rememberLocation();

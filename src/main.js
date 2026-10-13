@@ -1,7 +1,7 @@
 /** Точка входа: обработчик действий, жесты, запуск приложения и service worker. */
 import { PREP_QUESTIONS, THEMES } from './core/constants.js';
 import { getTaskList, nextSeminar } from './core/selectors.js';
-import { data, defaults, rt, save, setData, view } from './core/state.js';
+import { data, defaults, onSaved, rt, save, setData, view } from './core/state.js';
 import { toast } from './core/toast.js';
 import {
   $,
@@ -24,7 +24,7 @@ import {
   validGithubUrl
 } from './features/export.js';
 import { deletePrepFile, getPrepFile } from './features/files.js';
-import { checkServer, githubCommit, serverConfigured } from './features/api.js';
+import { checkServer, githubCommit, serverConfigured, syncSnapshot } from './features/api.js';
 import { clearChat, sendChatMessage } from './features/chat.js';
 import { reviewPrep } from './features/prep.js';
 import { checkReminders } from './features/reminders.js';
@@ -1032,6 +1032,13 @@ window.addEventListener('hashchange', () => {
   const page = pageFromLocation();
   if (page && page !== view.page) go(page);
 });
+
+/**
+ * Снимок состояния уходит на сервер при каждом сохранении и один раз при
+ * запуске: утренний звонок делает сервер, когда телефон может быть выключен.
+ */
+onSaved.push(() => syncSnapshot());
+syncSnapshot({ immediate: true });
 
 const deepLink = pageFromLocation();
 if (deepLink) view.page = deepLink;

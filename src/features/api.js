@@ -106,6 +106,34 @@ export function snapshot() {
   };
 }
 
+/**
+ * Отправка снимка на сервер.
+ *
+ * Утренний звонок делает сервер, а данные живут в браузере: в 06:30
+ * телефон может быть выключен. Поэтому снимок уходит при каждом
+ * сохранении — с задержкой, чтобы серия правок дала один запрос.
+ *
+ * Ошибки молчаливые: это фоновая услуга, приложение работает без сервера.
+ */
+let syncTimer = null;
+let lastSent = '';
+
+export function syncSnapshot({ immediate = false } = {}) {
+  if (!serverConfigured()) return;
+  clearTimeout(syncTimer);
+  const send = async () => {
+    const body = snapshot();
+    const fingerprint = JSON.stringify(body);
+    if (fingerprint === lastSent) return;
+    try {
+      await request('/api/snapshot', { method: 'POST', body, timeout: 15000 });
+      lastSent = fingerprint;
+    } catch (_) {}
+  };
+  if (immediate) return void send();
+  syncTimer = setTimeout(send, 4000);
+}
+
 export function jarvisChat(messages) {
   return request('/api/jarvis/chat', { method: 'POST', body: { messages, snapshot: snapshot() } });
 }
