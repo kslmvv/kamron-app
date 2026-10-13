@@ -63,13 +63,15 @@ function applyRoutine(payload) {
     data.routine.some(item => item.time === time && item.title.trim().toLowerCase() === title.toLowerCase())
   )
     return true;
+  // Дни недели — повторяющееся дело. Иначе разовое, и день берётся из
+  // названного: «завтра» без этого превращалось в сегодня.
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(payload.date || '') ? payload.date : today();
   data.routine.push({
     id: uid(),
     time,
     title,
     category: ROUTINE_CATEGORIES.includes(payload.category) ? payload.category : 'Личное',
-    // Без дней недели это разовое дело, и оно привязывается к сегодняшнему дню.
-    ...(days.length ? { days } : { days: [], date: today() })
+    ...(days.length ? { days } : { days: [], date })
   });
   return true;
 }

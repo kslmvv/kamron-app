@@ -68,8 +68,16 @@ TOOLS = [
                     "type": "array",
                     "items": {"type": "integer", "minimum": 0, "maximum": 6},
                     "description": (
-                        "Дни недели: 0 — воскресенье, 1 — понедельник и так далее. "
-                        "Не указывать, если это разовое дело на сегодня."
+                        "Дни недели для повторяющегося дела: 0 — воскресенье, "
+                        "1 — понедельник и так далее. Для разового дела не указывать."
+                    ),
+                },
+                "date": {
+                    "type": "string",
+                    "description": (
+                        "День разового дела: today, tomorrow или ГГГГ-ММ-ДД. "
+                        "Указывать вместо days, когда дело не повторяется. "
+                        "Не указывать вместе с days."
                     ),
                 },
             },
@@ -171,6 +179,12 @@ async def apply(name: str, arguments: dict) -> str:
     payload = dict(arguments or {})
     if kind == "task":
         payload["due"] = _resolve_due(payload.get("due", ""))
+    if kind == "routine":
+        # «Завтра» модель называет словом, а приложению нужна дата.
+        payload["date"] = _resolve_due(payload.get("date", ""))
+        if payload.get("days"):
+            # Повторяющееся дело к одному дню не привязывается.
+            payload["date"] = ""
 
     url = f"{config.jarvis_url.rstrip('/')}/api/changes"
     token = config.jarvis_token or config.access_token
