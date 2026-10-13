@@ -15,7 +15,6 @@ import logging
 import os
 import tempfile
 import traceback
-from datetime import date
 
 from pytgcalls import PyTgCalls
 from pytgcalls.types import (
@@ -34,6 +33,7 @@ from telethon.sessions import StringSession
 from .brief import fetch_snapshot, instructions_for
 from .config import config
 from .realtime import FRAME_BYTES, SAMPLE_RATE, SILENCE, RealtimeSession
+from .state import state
 from .speech import synthesize
 
 log = logging.getLogger("caller")
@@ -45,9 +45,6 @@ class Caller:
         self.calls: PyTgCalls | None = None
         self.me = None
         self.session: RealtimeSession | None = None
-        self._day = ""
-        self._today_calls = 0
-        self._today_cost = 0.0
         self._busy = asyncio.Lock()
 
     async def start(self) -> None:
@@ -87,29 +84,23 @@ class Caller:
     def authorized(self) -> bool:
         return self.me is not None
 
-    def _roll(self) -> None:
-        today = date.today().isoformat()
-        if self._day != today:
-            self._day = today
-            self._today_calls = 0
-            self._today_cost = 0.0
-
     def quota(self) -> dict:
-        self._roll()
+        state.roll()
         return {
-            "звонков_сегодня": self._today_calls,
+            "звонков_сегодня": state.calls,
             "предел_в_сутки": config.max_calls_per_day,
             "предел_длительности_сек": config.max_call_seconds,
             "предел_разговора_сек": config.max_talk_seconds,
-            "расход_сегодня_долларов": round(self._today_cost, 4),
+            "расход_сегодня_долларов": round(state.cost, 4),
+            "счёт_на_диске": state.persistent,
         }
 
     async def call_and_say(self, text: str) -> dict:
         """Звонит адресату и проигрывает реплику. Возвращает исход попытки."""
         if not self.authorized:
             raise RuntimeError("Аккаунт-помощник не авторизован")
-        self._roll()
-        if self._today_calls >= config.max_calls_per_day:
+        state.roll()
+        if state.calls >= config.max_calls_per_day:
             raise RuntimeError(
                 f"Дневной предел звонков исчерпан ({config.max_calls_per_day})"
             )
@@ -119,7 +110,7 @@ class Caller:
         async with self._busy:
             # Счётчик увеличиваем ДО набора: обрыв связи или перезапуск
             # не должен позволить позвонить второй раз за ту же попытку.
-            self._today_calls += 1
+            state.add_call()
             target = await self.client.get_entity(config.target)
             path = os.path.join(tempfile.gettempdir(), "phrase.wav")
             await synthesize(text, path)
@@ -261,8 +252,8 @@ class Caller:
             raise RuntimeError("Аккаунт-помощник не авторизован")
         if kind not in ("morning", "evening"):
             raise RuntimeError("Вид звонка: morning или evening")
-        self._roll()
-        if self._today_calls >= config.max_calls_per_day:
+        state.roll()
+        if state.calls >= config.max_calls_per_day:
             raise RuntimeError(f"Дневной предел звонков исчерпан ({config.max_calls_per_day})")
         if self._busy.locked():
             raise RuntimeError("Звонок уже идёт")
@@ -270,7 +261,7 @@ class Caller:
         async with self._busy:
             # Счётчик увеличиваем ДО набора: обрыв связи или перезапуск
             # не должен позволить позвонить второй раз за ту же попытку.
-            self._today_calls += 1
+            state.add_call()
             target = await self.client.get_entity(config.target)
             snapshot, age = await fetch_snapshot()
             session = RealtimeSession(instructions_for(kind, snapshot, age))
@@ -311,7 +302,7 @@ class Caller:
                 await self.hang_up(target.id)
 
             spend = session.cost()
-            self._today_cost += spend["доллары"]
+            state.add_cost(spend["доллары"])
             return {
                 "дозвонился": True,
                 "вид": kind,

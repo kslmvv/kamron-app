@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from .caller import caller
 from .config import config
+from .state import state
 
 log = logging.getLogger("schedule")
 
@@ -45,8 +46,13 @@ def _parse(value: str, default: tuple[int, int]) -> tuple[int, int]:
 
 
 class Scheduler:
+    """
+    Отметки о сделанных звонках лежат на диске, а не в памяти: деплой
+    перезапускает контейнер, и память обнуляется. Один такой перезапуск
+    внутри окна опоздания уже привёл к повторному звонку.
+    """
+
     def __init__(self) -> None:
-        self._done: set[str] = set()
         self._task: asyncio.Task | None = None
 
     def plan(self) -> list[dict]:
@@ -62,7 +68,7 @@ class Scheduler:
                 {
                     "вид": kind,
                     "время": f"{hour:02d}:{minute:02d}",
-                    "уже_звонили_сегодня": f"{now.date().isoformat()}:{kind}" in self._done,
+                    "уже_звонили_сегодня": state.was_fired(kind),
                     "осталось_минут": round((at - now).total_seconds() / 60),
                 }
             )
@@ -73,14 +79,12 @@ class Scheduler:
             "включено": config.schedule_enabled,
             "зона": config.timezone,
             "запущен": bool(self._task and not self._task.done()),
+            "отметки_на_диске": state.persistent,
             "звонки": self.plan(),
         }
 
     async def _tick(self) -> None:
         now = datetime.now(_zone())
-        today = now.date().isoformat()
-        # Ключи прошлых дней не нужны, но и памяти не жрут — чистим за сутки.
-        self._done = {key for key in self._done if key.startswith(today)}
 
         for kind, raw, default in (
             ("morning", config.morning_at, (6, 30)),
@@ -91,11 +95,11 @@ class Scheduler:
             late = (now - at).total_seconds()
             if late < 0 or late > GRACE_SECONDS:
                 continue
-            key = f"{today}:{kind}"
-            if key in self._done:
+            if state.was_fired(kind):
                 continue
-            # Запись до набора: перезапуск не должен дать второй звонок.
-            self._done.add(key)
+            # Отметка до набора и сразу на диск: ни обрыв, ни перезапуск
+            # контейнера не должны дать второй звонок за то же утро.
+            state.mark_fired(kind)
             log.info("Расписание: звоню (%s), опоздание %.0f с", kind, late)
             try:
                 result = await caller.talk(kind)
