@@ -36,6 +36,7 @@ import {
   eventForm,
   gymLogForm,
   lessonForm,
+  moveDayForm,
   noteForm,
   prepFilesForm,
   projectAiForm,
@@ -353,6 +354,10 @@ async function onAction(el) {
   }
   if (a === 'new-event' || a === 'edit-event') {
     eventForm(id);
+    return;
+  }
+  if (a === 'move-day') {
+    moveDayForm(el.dataset.date || view.date);
     return;
   }
   if (a === 'new-gym-log' || a === 'edit-gym-log') {

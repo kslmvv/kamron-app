@@ -163,7 +163,6 @@ input[type='checkbox'] {
   display: none;
 }
 .page.dashboard {
-  overflow: hidden;
   padding-bottom: 12px;
 }
 .bottom-nav {
@@ -199,9 +198,8 @@ input[type='checkbox'] {
   height: 20px;
 }
 .dash-layout {
-  height: 100%;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto;
   gap: 10px;
 }
 .dash-hero {
@@ -282,14 +280,15 @@ input[type='checkbox'] {
   overflow: hidden;
   text-align: left;
   border: 1px solid #ffffff21;
-  border-radius: 21px;
-  padding: 15px;
+  border-radius: 18px;
+  padding: 12px 13px;
   background: var(--panel);
   color: var(--text);
   box-shadow: 0 9px 22px #050b1e39;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
   transition:
     transform 0.22s,
     border-color 0.22s,
@@ -2215,11 +2214,13 @@ body[data-theme='paper'] {
 }
 body[data-theme='ink'] {
   --bg: #000000;
-  --panel: #0e0f11;
-  --raised: #151619;
-  --text: #e7e8ea;
-  --muted: #8b8f96;
-  --line: #24262b;
+  /* Поверхности поднимаются ступенями: на чёрном одинаково тёмные панели
+     сливаются, и карточку от фона отличает только граница. */
+  --panel: #111214;
+  --raised: #191a1d;
+  --text: #ededf0;
+  --muted: #9a9ea6;
+  --line: #2b2d33;
   --accent: #7fb2ff;
   --accent-soft: rgba(127, 178, 255, 0.14);
   --accent-ink: #04070d;
@@ -2238,12 +2239,12 @@ body[data-theme='ink'] {
   color-scheme: dark;
 }
 body[data-theme='deep'] {
-  --bg: #0c1424;
-  --panel: #121c30;
-  --raised: #18243c;
-  --text: #e3eaf6;
-  --muted: #94a3bd;
-  --line: #223050;
+  --bg: #0a1220;
+  --panel: #111c31;
+  --raised: #19263f;
+  --text: #e5ecf8;
+  --muted: #9aa9c3;
+  --line: #243354;
   --accent: #86b4ff;
   --accent-soft: rgba(134, 180, 255, 0.14);
   --accent-ink: #081225;
@@ -7698,4 +7699,160 @@ body[data-theme] .sheet::backdrop {
   font-size: 19px;
   letter-spacing: -0.02em;
   line-height: 1;
+}
+
+/* ── Главный экран ─────────────────────────────────────────────────────
+   Открывая приложение, человек спрашивает «что у меня сейчас», а не «какие
+   есть разделы». Поэтому день стоит выше плиток, а плитки ужаты до строки. */
+.today-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--text);
+}
+.today-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+.today-head b {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.today-rows {
+  margin-top: 9px;
+  display: grid;
+  gap: 7px;
+}
+.today-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+}
+.today-time {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.today-name {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-row.is-done .today-name {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.today-check {
+  color: var(--accent);
+  font-size: 13px;
+}
+.today-meter {
+  height: 4px;
+  margin-top: 12px;
+  border-radius: 99px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.today-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+}
+.today-empty {
+  margin-top: 7px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.dash-tile .tile-emoji {
+  flex-shrink: 0;
+}
+.tile-copy {
+  display: grid;
+  min-width: 0;
+}
+body[data-theme] .dash-tile {
+  min-height: 72px;
+}
+body[data-theme] .tile-title {
+  font-size: 15px;
+  line-height: 1.25;
+}
+body[data-theme] .tile-caption {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+body[data-theme] .dash-tile .tile-emoji {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 20px;
+  transform: none;
+}
+body[data-theme] .dash-tile:nth-child(even) .tile-emoji {
+  transform: none;
+}
+
+/* Подпись плитки занимает две строки вместо обрезки на полуслове. */
+body[data-theme] .tile-caption {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+.mini-panel.is-wide {
+  grid-column: 1 / -1;
+}
+
+/* ── Тёмные темы: читаемость ───────────────────────────────────────────
+   На чёрном фоне тонкости теряются: граница в один пиксель почти не видна,
+   а подпись мельче 12px читается с усилием. Здесь — только поправки,
+   которые светлой теме не нужны. */
+body[data-theme='ink'] .tl-card,
+body[data-theme='ink'] .today-card,
+body[data-theme='ink'] .day-head,
+body[data-theme='ink'] .mini-panel,
+body[data-theme='deep'] .tl-card,
+body[data-theme='deep'] .today-card,
+body[data-theme='deep'] .day-head,
+body[data-theme='deep'] .mini-panel {
+  background: var(--panel);
+  border-color: var(--line);
+}
+/* Нажатие должно быть заметно: на чёрном лёгкое затемнение не читается,
+   поэтому отклик даёт подсветка, а не тень. */
+body[data-theme='ink'] .tl-card:active,
+body[data-theme='ink'] .today-card:active,
+body[data-theme='ink'] .dash-tile:active,
+body[data-theme='deep'] .tl-card:active,
+body[data-theme='deep'] .today-card:active,
+body[data-theme='deep'] .dash-tile:active {
+  background: var(--raised);
+}
+body[data-theme='ink'] .section-title,
+body[data-theme='deep'] .section-title {
+  color: var(--text);
+}
+/* Разделители в тёмной теме не должны спорить с текстом. */
+body[data-theme='ink'] .tl-gap::after,
+body[data-theme='deep'] .tl-gap::after {
+  opacity: 0.6;
 }

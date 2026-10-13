@@ -1,10 +1,11 @@
 /** Разметка всех форм и поиска по приложению. */
 import { EMOJI, ROUTINE_POINTS } from '../core/constants.js';
 import { icons, svg } from '../core/icons.js';
-import { getTaskList } from '../core/selectors.js';
+import { getTaskList, routineOccurs } from '../core/selectors.js';
 import { data, view } from '../core/state.js';
-import { $, esc, fmt, fromKey, safeId, today } from '../core/utils.js';
+import { $, addDays, esc, fmt, fromKey, plural, safeId, today } from '../core/utils.js';
 import { openModal } from './modal.js';
+import { toast } from '../core/toast.js';
 import { weekdayInputs } from '../ui/components.js';
 
 export function commandResults(query) {
@@ -137,6 +138,24 @@ export function eventForm(id) {
   openModal(
     e ? 'Изменить пункт' : 'Новый пункт режима',
     `<form class="form-grid" data-form="event" data-id="${safeId(id || '')}"><label>Что запланировано<input name="title" required maxlength="70" value="${esc(e?.title || '')}" placeholder="Например, утренняя прогулка"></label><div class="form-two"><label>Время<input type="time" name="time" required value="${esc(e?.time || '09:00')}"></label><label>Раздел<select name="category"><option ${e?.category === 'Личное' ? 'selected' : ''}>Личное</option><option ${e?.category === 'Работа' ? 'selected' : ''}>Работа</option><option ${e?.category === 'Учёба' ? 'selected' : ''}>Учёба</option><option ${e?.category === 'Другое' ? 'selected' : ''}>Другое</option></select></label></div><label>Когда?<select name="repeat" id="event-repeat"><option value="once" ${!e || once ? 'selected' : ''}>Один раз</option><option value="weekly" ${e && !once ? 'selected' : ''}>Повторять по дням</option></select></label><div id="event-once" ${e && !once ? 'hidden' : ''}><label>Дата<input type="date" name="date" value="${esc(selectedDate)}" required ${e && !once ? 'disabled' : ''}></label></div><div id="event-weekly" ${!e || once ? 'hidden' : ''}><label>Дни недели</label>${weekdayInputs(e?.days || [fromKey(selectedDate).getDay()])}</div><p class="hint">Отметка выполнения и +${ROUTINE_POINTS} баллов сохраняются для каждой даты отдельно.</p><div class="form-actions"><button type="button" class="secondary-btn" data-action="close-modal">Отмена</button><button class="primary-btn">Сохранить</button></div>${e ? `<button type="button" class="text-btn danger-action" data-action="delete-event" data-id="${safeId(e.id)}">Удалить пункт</button>` : ''}</form>`
+  );
+}
+
+export function moveDayForm(sourceKey) {
+  const items = data.routine.filter(e => routineOccurs(e, sourceKey));
+  if (!items.length) {
+    toast('В этом дне нет пунктов режима');
+    return;
+  }
+  const once = items.filter(e => e.date).length;
+  const repeating = items.length - once;
+  openModal(
+    'Перенести день',
+    `<form class="form-grid" data-form="move-day" data-id="${esc(sourceKey)}">
+      <p class="hint">Переносится ${items.length} ${plural(items.length, 'пункт', 'пункта', 'пунктов')} из дня ${esc(fmt(sourceKey, { weekday: 'long', day: 'numeric', month: 'long' }))}.${repeating ? ` Повторяющиеся (${repeating}) сменят день недели, а не дату.` : ''}${once ? ` Разовые (${once}) переедут на выбранную дату.` : ''}</p>
+      <label>На какой день<input type="date" name="target" required value="${esc(addDays(sourceKey, 1))}"></label>
+      <div class="form-actions"><button type="button" class="secondary-btn" data-action="close-modal">Отмена</button><button class="primary-btn">Перенести</button></div>
+    </form>`
   );
 }
 

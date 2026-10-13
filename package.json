@@ -1,6 +1,6 @@
 {
   "name": "kamron-app",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "private": true,
   "description": "Kamron APP — личный центр дня: режим дня, работа, универ, зал, заметки, Jarvis и игры. PWA без внешних зависимостей.",
   "type": "module",

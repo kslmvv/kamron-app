@@ -1,11 +1,11 @@
-/* Kamron APP 0.21.0 — собрано из src/. Не редактируйте этот файл: правки вносятся в src/ и применяются командой npm run build. */
+/* Kamron APP 0.22.0 — собрано из src/. Не редактируйте этот файл: правки вносятся в src/ и применяются командой npm run build. */
 (() => {
   // src/core/constants.js
   var KEY = "kamron-app-mvp-v1";
   var DAY = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   var TASK_POINTS = 50;
   var ROUTINE_POINTS = 10;
-  var APP_BUILD = true ? "MVP 0.21" : "MVP (dev)";
+  var APP_BUILD = true ? "MVP 0.22" : "MVP (dev)";
   var LINKABLE_PAGES = [
     "home",
     "more",
@@ -793,6 +793,39 @@
           data.routineDone[markedDate] = ids.filter((x) => x !== e.id);
           if (!data.routineDone[markedDate].length) delete data.routineDone[markedDate];
         }
+    } else if (type === "move-day") {
+      const target = String(fd.get("target") || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) {
+        toast("Укажите дату");
+        return;
+      }
+      if (target === id) {
+        toast("Это тот же день");
+        return;
+      }
+      const sourceDay = fromKey(id).getDay(), targetDay = fromKey(target).getDay();
+      const moved = data.routine.filter((e) => routineOccurs(e, id));
+      moved.forEach((e) => {
+        if (e.date) {
+          e.date = target;
+          return;
+        }
+        const days = new Set(e.days || []);
+        days.delete(sourceDay);
+        days.add(targetDay);
+        e.days = [...days].sort();
+      });
+      for (const [markedDate, ids] of Object.entries(data.routineDone))
+        if (Array.isArray(ids)) {
+          const kept = ids.filter((x) => {
+            const item = data.routine.find((e) => e.id === x);
+            return !item || routineOccurs(item, markedDate);
+          });
+          if (kept.length) data.routineDone[markedDate] = kept;
+          else delete data.routineDone[markedDate];
+        }
+      view.date = target;
+      toast(`Перенесено: ${moved.length} ${moved.length === 1 ? "пункт" : "пунктов"}`);
     } else if (type === "gym-log") {
       const date = String(fd.get("date") || ""), title = String(fd.get("title") || "").trim(), minutes = String(fd.get("duration") || "").trim(), duration = minutes ? Number(minutes) : 0;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today() || !title || minutes && (!Number.isInteger(duration) || duration < 1 || duration > 360)) {
@@ -1255,20 +1288,39 @@
 
   // src/views/home.js
   function renderHome() {
-    const stats = gameStats(), upcoming = nextThing(), open = allOpenTasks(), routineToday = routineProgress(today()), note = [...data.notes].sort(
+    const stats = gameStats(), open = allOpenTasks(), key = today(), routineToday = routineProgress(key), note = [...data.notes].sort(
       (a, b) => Number(b.pinned) - Number(a.pinned) || (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt)
     )[0];
     const due = open.filter((t) => t.due).sort((a, b) => a.due.localeCompare(b.due))[0], workOpen = data.projects.reduce((n, p) => n + (p.tasks || []).filter((t) => !t.doneAt).length, 0), uniOpen = data.subjects.reduce((n, s) => n + (s.tasks || []).filter((t) => !t.doneAt).length, 0);
+    const now = (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+    const items = dayItems(key);
+    const ahead = items.filter((item) => item.time >= now).slice(0, 3);
+    const shown = ahead.length ? ahead : items.slice(-2);
+    const percent = routineToday.total ? Math.round(routineToday.done / routineToday.total * 100) : 0;
+    const agendaRows = shown.map((item) => {
+      const done = item.kind === "routine" && routineCompleted(key, item.id);
+      return `<div class="today-row ${done ? "is-done" : ""}"><span class="today-time">${item.time}</span><span class="today-name">${esc(item.title)}</span>${done ? '<span class="today-check" aria-label="выполнено">✓</span>' : ""}</div>`;
+    }).join("");
+    const todayCard = items.length ? `<button class="today-card" data-action="go" data-page="routine">
+        <div class="today-head"><span>${ahead.length ? "ДАЛЬШЕ СЕГОДНЯ" : "ДЕНЬ ЗАВЕРШЁН"}</span><b>${routineToday.total ? `${routineToday.done}/${routineToday.total}` : ""}</b></div>
+        <div class="today-rows">${agendaRows}</div>
+        ${routineToday.total ? `<div class="today-meter"><i style="width:${percent}%"></i></div>` : ""}
+      </button>` : `<button class="today-card is-empty" data-action="new-event">
+        <div class="today-head"><span>СЕГОДНЯ</span></div>
+        <div class="today-empty">День пустой. Добавьте первый пункт — или скажите Джарвису в звонке.</div>
+      </button>`;
+    const tile = (page, emoji, title, caption, kind) => `<button class="dash-tile ${kind}" data-action="go" data-page="${page}"><span class="tile-emoji">${emoji}</span><span class="tile-copy"><span class="tile-title">${title}</span><span class="tile-caption">${caption}</span></span></button>`;
     return `<div class="dash-layout">
-      <div class="dash-hero"><div><h1>Привет, ${esc(data.name)} 👋</h1></div><div class="dash-date">${esc(fmt(today(), { weekday: "short", day: "numeric", month: "short" }))}</div></div>
+      <div class="dash-hero"><div><h1>Привет, ${esc(data.name)} 👋</h1></div><div class="dash-date">${esc(fmt(key, { weekday: "short", day: "numeric", month: "short" }))}</div></div>
       <button class="progress-card" data-action="go" data-page="insights" style="color:inherit;text-align:left"><div class="score-main"><div class="score-orb">✦</div><div><div class="score-value">${stats.points} ${plural(stats.points, "балл", "балла", "баллов")}</div><div class="score-label">Уровень ${stats.level} · ещё ${250 - stats.points % 250}</div></div></div><div class="streak">🔥 ${stats.streak}<small>${plural(stats.streak, "день", "дня", "дней")}</small></div></button>
+      ${todayCard}
       <div class="dash-grid">
-        <button class="dash-tile routine" data-action="go" data-page="routine"><div class="tile-top"><span class="tile-emoji">🕒</span><span class="tile-arrow">↗</span></div><div><span class="tile-title">Режим дня</span><span class="tile-caption">${routineToday.total ? `${routineToday.done}/${routineToday.total} выполнено` : "Добавьте первый пункт"}</span></div></button>
-        <button class="dash-tile work" data-action="go" data-page="work"><div class="tile-top"><span class="tile-emoji">💼</span><span class="tile-arrow">↗</span></div><div><span class="tile-title">Работа</span><span class="tile-caption">${data.projects.length} ${plural(data.projects.length, "проект", "проекта", "проектов")} · ${workOpen} ${plural(workOpen, "задача", "задачи", "задач")}</span></div></button>
-        <button class="dash-tile uni" data-action="go" data-page="uni"><div class="tile-top"><span class="tile-emoji">🎓</span><span class="tile-arrow">↗</span></div><div><span class="tile-title">Универ</span><span class="tile-caption">${data.subjects.length} ${plural(data.subjects.length, "предмет", "предмета", "предметов")} · ${uniOpen} ${plural(uniOpen, "задача", "задачи", "задач")}</span></div></button>
-        <button class="dash-tile gym" data-action="go" data-page="gym"><div class="tile-top"><span class="tile-emoji">💪</span><span class="tile-arrow">↗</span></div><div><span class="tile-title">Зал</span><span class="tile-caption">${data.gym.length ? `${data.gym.length} ${plural(data.gym.length, "тренировка", "тренировки", "тренировок")} в журнале` : "Записать тренировку"}</span></div></button>
+        ${tile("routine", "🕒", "Режим дня", routineToday.total ? `${routineToday.done}/${routineToday.total} выполнено` : "Пунктов нет", "routine")}
+        ${tile("work", "💼", "Работа", workOpen ? `${workOpen} ${plural(workOpen, "задача", "задачи", "задач")}` : `${data.projects.length} ${plural(data.projects.length, "проект", "проекта", "проектов")}`, "work")}
+        ${tile("uni", "🎓", "Универ", uniOpen ? `${uniOpen} ${plural(uniOpen, "задача", "задачи", "задач")}` : `${data.subjects.length} ${plural(data.subjects.length, "предмет", "предмета", "предметов")}`, "uni")}
+        ${tile("gym", "💪", "Зал", data.gym.length ? `${data.gym.length} ${plural(data.gym.length, "тренировка", "тренировки", "тренировок")}` : "Журнал пуст", "gym")}
       </div>
-      <div class="dash-bottom"><button class="mini-panel" data-action="go" data-page="routine"><div class="mini-title">ДАЛЬШЕ <span>↗</span></div><div class="mini-value">${upcoming ? esc(upcoming.item.title) : "Свободное время"}</div><div class="mini-sub">${upcoming ? `${upcoming.key === today() ? "Сегодня" : esc(fmt(upcoming.key, { weekday: "short", day: "numeric", month: "short" }))} · ${upcoming.item.time}` : "Можно запланировать день"}</div></button><button class="mini-panel" data-action="go" data-page="tasks"><div class="mini-title">ЗАДАЧИ <span>↗</span></div><div class="mini-value">${due ? esc(due.title) : open.length ? `${open.length} без срока` : "Всё под контролем"}</div><div class="mini-sub">${due ? `${esc(due.source)} · ${esc(fmt(due.due, { day: "numeric", month: "short" }))}` : "Все задачи в одном месте"}</div></button></div>
+      <button class="mini-panel is-wide" data-action="go" data-page="tasks"><div class="mini-title">ЗАДАЧИ <span>↗</span></div><div class="mini-value">${due ? esc(due.title) : open.length ? `${open.length} ${plural(open.length, "задача", "задачи", "задач")} без срока` : "Всё под контролем"}</div><div class="mini-sub">${due ? `${esc(due.source)} · ${esc(fmt(due.due, { day: "numeric", month: "short" }))}` : "Все задачи в одном месте"}</div></button>
       <div class="quick-note"><button class="quick-note-open" data-action="go" data-page="notes"><strong>📝 Заметки</strong><span>${note ? esc(`${note.title ? `${note.title} · ` : ""}${note.body.slice(0, 45)}`) : "Здесь будут ваши записи"}</span></button><button class="quick-note-add" data-action="new-note" aria-label="Новая заметка">+</button></div>
     </div>`;
   }
@@ -1403,7 +1455,7 @@
     const percent = progress.total ? Math.round(progress.done / progress.total * 100) : 0;
     return `${heading("ПЛАН НА КАЖДЫЙ ДЕНЬ", "Режим дня", "Отмечайте выполненное. Каждая дата хранит свой результат.", "new-event")}${mode}
       <div class="day-head">
-        <div class="day-head-top"><strong>${esc(fmt(key, { weekday: "long", day: "numeric", month: "long" }))}</strong><div>${key !== today() ? `<button class="routine-date-today" data-action="routine-today">Сегодня</button>` : ""}<button class="routine-date-calendar" data-action="toggle-routine-calendar" aria-expanded="${view.routineCalendarOpen}" aria-label="${view.routineCalendarOpen ? "Скрыть" : "Открыть"} календарь месяца">${svg("plan")}</button></div></div>
+        <div class="day-head-top"><strong>${esc(fmt(key, { weekday: "long", day: "numeric", month: "long" }))}</strong><div>${items.length ? `<button class="routine-date-today" data-action="move-day" data-date="${key}" title="Перенести все пункты этого дня на другую дату">Перенести</button>` : ""}${key !== today() ? `<button class="routine-date-today" data-action="routine-today">Сегодня</button>` : ""}<button class="routine-date-calendar" data-action="toggle-routine-calendar" aria-expanded="${view.routineCalendarOpen}" aria-label="${view.routineCalendarOpen ? "Скрыть" : "Открыть"} календарь месяца">${svg("plan")}</button></div></div>
         <div class="day-meter" role="img" aria-label="Выполнено ${progress.done} из ${progress.total}"><i style="width:${percent}%"></i></div>
         <div class="day-meter-note"><span>${progress.total ? `${progress.done} из ${progress.total} отмечено` : "Пунктов режима нет"}</span><span>${progress.done ? `+${progress.done * ROUTINE_POINTS} баллов` : `+${ROUTINE_POINTS} за пункт`}</span></div>
       </div>
@@ -2839,6 +2891,23 @@ ${checks}
       `<form class="form-grid" data-form="event" data-id="${safeId(id || "")}"><label>Что запланировано<input name="title" required maxlength="70" value="${esc(e?.title || "")}" placeholder="Например, утренняя прогулка"></label><div class="form-two"><label>Время<input type="time" name="time" required value="${esc(e?.time || "09:00")}"></label><label>Раздел<select name="category"><option ${e?.category === "Личное" ? "selected" : ""}>Личное</option><option ${e?.category === "Работа" ? "selected" : ""}>Работа</option><option ${e?.category === "Учёба" ? "selected" : ""}>Учёба</option><option ${e?.category === "Другое" ? "selected" : ""}>Другое</option></select></label></div><label>Когда?<select name="repeat" id="event-repeat"><option value="once" ${!e || once ? "selected" : ""}>Один раз</option><option value="weekly" ${e && !once ? "selected" : ""}>Повторять по дням</option></select></label><div id="event-once" ${e && !once ? "hidden" : ""}><label>Дата<input type="date" name="date" value="${esc(selectedDate)}" required ${e && !once ? "disabled" : ""}></label></div><div id="event-weekly" ${!e || once ? "hidden" : ""}><label>Дни недели</label>${weekdayInputs(e?.days || [fromKey(selectedDate).getDay()])}</div><p class="hint">Отметка выполнения и +${ROUTINE_POINTS} баллов сохраняются для каждой даты отдельно.</p><div class="form-actions"><button type="button" class="secondary-btn" data-action="close-modal">Отмена</button><button class="primary-btn">Сохранить</button></div>${e ? `<button type="button" class="text-btn danger-action" data-action="delete-event" data-id="${safeId(e.id)}">Удалить пункт</button>` : ""}</form>`
     );
   }
+  function moveDayForm(sourceKey) {
+    const items = data.routine.filter((e) => routineOccurs(e, sourceKey));
+    if (!items.length) {
+      toast("В этом дне нет пунктов режима");
+      return;
+    }
+    const once = items.filter((e) => e.date).length;
+    const repeating = items.length - once;
+    openModal(
+      "Перенести день",
+      `<form class="form-grid" data-form="move-day" data-id="${esc(sourceKey)}">
+      <p class="hint">Переносится ${items.length} ${plural(items.length, "пункт", "пункта", "пунктов")} из дня ${esc(fmt(sourceKey, { weekday: "long", day: "numeric", month: "long" }))}.${repeating ? ` Повторяющиеся (${repeating}) сменят день недели, а не дату.` : ""}${once ? ` Разовые (${once}) переедут на выбранную дату.` : ""}</p>
+      <label>На какой день<input type="date" name="target" required value="${esc(addDays(sourceKey, 1))}"></label>
+      <div class="form-actions"><button type="button" class="secondary-btn" data-action="close-modal">Отмена</button><button class="primary-btn">Перенести</button></div>
+    </form>`
+    );
+  }
   function gymLogForm(id) {
     const log = data.gym.find((x) => x.id === id);
     openModal(
@@ -3192,6 +3261,10 @@ ${checks}
     }
     if (a === "new-event" || a === "edit-event") {
       eventForm(id);
+      return;
+    }
+    if (a === "move-day") {
+      moveDayForm(el.dataset.date || view.date);
       return;
     }
     if (a === "new-gym-log" || a === "edit-gym-log") {

@@ -2,7 +2,7 @@
 import { getTaskList, routineOccurs, scheduledOn } from '../core/selectors.js';
 import { data, rt, save, setData, view } from '../core/state.js';
 import { toast } from '../core/toast.js';
-import { $, esc, today, uid } from '../core/utils.js';
+import { $, esc, fromKey, today, uid } from '../core/utils.js';
 import { validGithubUrl, validRailwayUrl } from '../features/export.js';
 import { sendChatMessage } from '../features/chat.js';
 import { attachPrepFiles, deletePrepFile } from '../features/files.js';
@@ -242,6 +242,45 @@ export async function submitForm(form) {
         data.routineDone[markedDate] = ids.filter(x => x !== e.id);
         if (!data.routineDone[markedDate].length) delete data.routineDone[markedDate];
       }
+  } else if (type === 'move-day') {
+    // Перенос дня целиком. Повторяющийся пункт переносится сменой дня
+    // недели: у него нет даты, и «перенести на среду» для него значит
+    // «теперь по средам». Разовый просто меняет дату.
+    const target = String(fd.get('target') || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) {
+      toast('Укажите дату');
+      return;
+    }
+    if (target === id) {
+      toast('Это тот же день');
+      return;
+    }
+    const sourceDay = fromKey(id).getDay(),
+      targetDay = fromKey(target).getDay();
+    const moved = data.routine.filter(e => routineOccurs(e, id));
+    moved.forEach(e => {
+      if (e.date) {
+        e.date = target;
+        return;
+      }
+      const days = new Set(e.days || []);
+      days.delete(sourceDay);
+      days.add(targetDay);
+      e.days = [...days].sort();
+    });
+    // Отметки о выполнении привязаны к датам; те, что больше не совпадают
+    // с расписанием пункта, убираются, иначе прогресс дня врёт.
+    for (const [markedDate, ids] of Object.entries(data.routineDone))
+      if (Array.isArray(ids)) {
+        const kept = ids.filter(x => {
+          const item = data.routine.find(e => e.id === x);
+          return !item || routineOccurs(item, markedDate);
+        });
+        if (kept.length) data.routineDone[markedDate] = kept;
+        else delete data.routineDone[markedDate];
+      }
+    view.date = target;
+    toast(`Перенесено: ${moved.length} ${moved.length === 1 ? 'пункт' : 'пунктов'}`);
   } else if (type === 'gym-log') {
     const date = String(fd.get('date') || ''),
       title = String(fd.get('title') || '').trim(),
