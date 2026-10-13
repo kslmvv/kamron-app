@@ -15,7 +15,7 @@ export const defaultRoutine = () => [
   { id: uid(), time: '12:00', title: 'Свободный блок', category: 'Личное', days: [0, 6] }
 ];
 
-export const resolveTheme = theme => (THEMES[theme] ? theme : OLD_THEMES[theme] || 'sky');
+export const resolveTheme = theme => (THEMES[theme] ? theme : OLD_THEMES[theme] || 'ink');
 
 export const emptyVoiceReport = () => ({ done: '', missed: '', reason: '', tomorrow: '' });
 
@@ -32,7 +32,7 @@ export const defaultPhone = () => ({
 export const defaults = () => ({
   version: 1,
   name: 'Камрон',
-  theme: 'sky',
+  theme: 'ink',
   reduceMotion: false,
   reminders: false,
   lead: 10,

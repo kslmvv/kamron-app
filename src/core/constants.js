@@ -141,19 +141,27 @@ export const SHAPES = [
 ];
 
 export const THEMES = {
-  sky: { name: 'Небо', mood: 'Лёгкий день', color: '#f3f5f7' },
-  night: { name: 'Ночь', mood: 'Спокойный вечер', color: '#171d26' },
-  sage: { name: 'Шалфей', mood: 'Спокойствие', color: '#f2f5ef' },
-  sunset: { name: 'Рассвет', mood: 'Тёплый настрой', color: '#faf5f1' }
+  ink: { name: 'Чёрная', mood: 'Ночь и OLED', color: '#000000' },
+  paper: { name: 'Белая', mood: 'Дневной свет', color: '#f6f7f9' },
+  deep: { name: 'Тёмно-синяя', mood: 'Мягкая темнота', color: '#0c1424' }
 };
 
+/**
+ * Старые имена тем. Пользователь не должен однажды открыть приложение и
+ * обнаружить сброс оформления, поэтому каждое прежнее имя ведёт в близкую
+ * по светлоте новую тему.
+ */
 export const OLD_THEMES = {
-  light: 'sky',
-  dark: 'night',
-  graphite: 'night',
-  paper: 'sky',
-  forest: 'sage',
-  plum: 'sunset'
+  light: 'paper',
+  dark: 'ink',
+  graphite: 'ink',
+  paper: 'paper',
+  forest: 'paper',
+  plum: 'paper',
+  sky: 'paper',
+  night: 'deep',
+  sage: 'paper',
+  sunset: 'paper'
 };
 
 export const PREP_QUESTIONS = [

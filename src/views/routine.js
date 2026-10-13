@@ -40,41 +40,69 @@ export function renderRoutine() {
     deadlines = dueTasks(key),
     overdue = key === today() ? allOpenTasks().filter(t => t.due && t.due < key) : [],
     progress = routineProgress(key);
-  const currentHm = new Date().toTimeString().slice(0, 5),
-    next =
-      key >= today()
-        ? items.find(
-            item =>
-              (key > today() || item.time >= currentHm) &&
-              (item.kind !== 'routine' || !routineCompleted(key, item.id))
-          ) || items.find(item => item.kind === 'routine' && !routineCompleted(key, item.id))
-        : null;
-  const nextIsLate = next && key === today() && next.time < currentHm;
+  const currentHm = new Date().toTimeString().slice(0, 5);
+  const isToday = key === today();
+
+  /** Минуты от полуночи — ими считаются промежутки и место отметки «сейчас». */
+  const minutes = hm => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
+
+  // Пересечения показываются явно: два дела на одно время — это ошибка
+  // планирования, и человек должен увидеть её, а не искать глазами.
+  const atSameTime = new Map();
+  items.forEach(item => atSameTime.set(item.time, (atSameTime.get(item.time) || 0) + 1));
+
+  const rows = [];
+  let nowPlaced = false;
+  items.forEach((item, index) => {
+    const previous = items[index - 1];
+    // Отметка «сейчас» встаёт между пунктами, а не поверх них.
+    if (isToday && !nowPlaced && item.time > currentHm) {
+      rows.push(`<div class="tl-now"><span>${currentHm}</span></div>`);
+      nowPlaced = true;
+    }
+    // Длинный промежуток — это свободное время, и его стоит видеть:
+    // именно в такие дыры и ставятся новые дела.
+    if (previous) {
+      const gap = minutes(item.time) - minutes(previous.time);
+      if (gap >= 90)
+        rows.push(
+          `<div class="tl-gap"><span>${Math.floor(gap / 60)} ч ${gap % 60 ? `${gap % 60} мин ` : ''}свободно</span></div>`
+        );
+    }
+    const done = item.kind === 'routine' && routineCompleted(key, item.id);
+    const past = isToday && item.time <= currentHm;
+    const clash = atSameTime.get(item.time) > 1;
+    const meta =
+      item.kind === 'routine'
+        ? `${esc(item.category)}${item.date ? ' · один раз' : ''}`
+        : `${esc(item.category)}${item.room ? ` · ауд. ${esc(item.room)}` : ''}`;
+    const attendance =
+      item.attendance === 'present'
+        ? '✓ Был'
+        : item.attendance === 'absent'
+          ? 'Пропуск'
+          : key <= today()
+            ? 'Отметить'
+            : '⋯';
+    rows.push(
+      `<div class="tl-row ${item.kind === 'subject' ? 'is-lesson' : ''} ${done ? 'is-done' : ''} ${past && !done && item.kind === 'routine' ? 'is-missed' : ''} ${clash ? 'is-clash' : ''}" data-routine-item="${safeId(item.id)}">` +
+        `<span class="tl-time">${item.time}</span>` +
+        `<div class="tl-card">` +
+        (item.kind === 'routine'
+          ? `<button class="check-btn routine-check ${done ? 'done' : ''}" data-action="toggle-routine" data-date="${key}" data-id="${safeId(item.id)}" aria-label="${key > today() ? 'Можно отметить после наступления дня' : done ? 'Снять отметку выполнения' : 'Отметить выполненным'}: ${esc(item.title)}" aria-pressed="${!!done}" ${key > today() ? 'disabled' : ''}>${done ? '✓' : ''}</button>`
+          : `<span class="tl-lesson-mark" aria-hidden="true">🎓</span>`) +
+        `<div class="grow"><strong>${esc(item.title)}</strong><small>${meta}${clash ? ' · <b class="tl-clash-note">пересечение</b>' : ''}</small></div>` +
+        (item.kind === 'routine'
+          ? `<button class="delete-btn routine-edit" data-action="edit-event" data-id="${safeId(item.id)}" aria-label="Изменить пункт «${esc(item.title)}»">✎</button>`
+          : `<button class="attendance-btn" data-action="lesson-options" data-parent="${safeId(item.id)}" data-date="${key}" aria-label="${key <= today() ? 'Отметить посещаемость' : 'Изменить пару'}">${attendance}</button>`) +
+        `</div></div>`
+    );
+  });
+  // День ещё не начался или уже прошёл — отметка ставится по краю.
+  if (isToday && !nowPlaced && items.length) rows.push(`<div class="tl-now"><span>${currentHm}</span></div>`);
+
   const timeline = items.length
-    ? `<div class="timeline">${items
-        .map(item => {
-          const done = item.kind === 'routine' && routineCompleted(key, item.id);
-          const status =
-            item.kind === 'routine'
-              ? done
-                ? `Готово · +${ROUTINE_POINTS} баллов`
-                : key > today()
-                  ? 'В плане'
-                  : key === today() && item.time > currentHm
-                    ? 'Впереди'
-                    : key === today()
-                      ? 'Можно отметить'
-                      : 'Без отметки'
-              : item.attendance === 'present'
-                ? 'Был на занятии'
-                : item.attendance === 'absent'
-                  ? 'Пропустил занятие'
-                  : key <= today()
-                    ? 'Посещаемость не отмечена'
-                    : 'Пара впереди';
-          return `<div class="timeline-item ${item.category === 'Работа' ? 'mint' : item.kind === 'subject' ? 'amber' : ''} ${done ? 'routine-item-done' : ''}" data-routine-item="${safeId(item.id)}"><span class="time">${item.time}</span><div class="timeline-card ${item.kind === 'routine' ? 'routine-entry' : ''}"><div class="row">${item.kind === 'routine' ? `<button class="check-btn routine-check ${done ? 'done' : ''}" data-action="toggle-routine" data-date="${key}" data-id="${safeId(item.id)}" aria-label="${key > today() ? 'Можно отметить после наступления дня' : done ? 'Снять отметку выполнения' : 'Отметить выполненным'}: ${esc(item.title)}" aria-pressed="${!!done}" ${key > today() ? 'disabled' : ''}>${done ? '✓' : ''}</button>` : ''}<div class="grow"><strong>${esc(item.title)}</strong><small>${esc(item.category)}${item.room ? ` · ауд. ${esc(item.room)}` : ''}${item.kind === 'routine' ? (item.date ? ' · Один раз' : ' · Повтор') : ''}</small>${item.kind === 'routine' ? `<span class="routine-entry-status ${done ? 'is-done' : ''}">${status}</span>` : ''}</div>${item.kind === 'routine' ? `<button class="delete-btn routine-edit" data-action="edit-event" data-id="${safeId(item.id)}" aria-label="Изменить пункт «${esc(item.title)}»">✎</button>` : `<button class="attendance-btn" data-action="lesson-options" data-parent="${safeId(item.id)}" data-date="${key}" aria-label="${key <= today() ? 'Отметить посещаемость' : 'Изменить пару'}">${item.attendance === 'present' ? '✓ Был' : item.attendance === 'absent' ? 'Пропуск' : key <= today() ? 'Отметить' : '⋯'}</button>`}</div>${item.kind === 'subject' ? `<span class="lesson-status">${status}</span>` : ''}</div></div>`;
-        })
-        .join('')}</div>`
+    ? `<div class="timeline">${rows.join('')}</div>`
     : empty(
         '🗓️',
         'День пока свободен',
@@ -82,11 +110,15 @@ export function renderRoutine() {
         'new-event',
         'Добавить пункт'
       );
+
+  const percent = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
   return `${heading('ПЛАН НА КАЖДЫЙ ДЕНЬ', 'Режим дня', 'Отмечайте выполненное. Каждая дата хранит свой результат.', 'new-event')}${mode}
-      <div class="routine-date-bar"><strong>${esc(fmt(key, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong><div>${key !== today() ? `<button class="routine-date-today" data-action="routine-today">Сегодня</button>` : ''}<button class="routine-date-calendar" data-action="toggle-routine-calendar" aria-expanded="${view.routineCalendarOpen}" aria-label="${view.routineCalendarOpen ? 'Скрыть' : 'Открыть'} календарь месяца">${svg('plan')}</button></div></div>
+      <div class="day-head">
+        <div class="day-head-top"><strong>${esc(fmt(key, { weekday: 'long', day: 'numeric', month: 'long' }))}</strong><div>${key !== today() ? `<button class="routine-date-today" data-action="routine-today">Сегодня</button>` : ''}<button class="routine-date-calendar" data-action="toggle-routine-calendar" aria-expanded="${view.routineCalendarOpen}" aria-label="${view.routineCalendarOpen ? 'Скрыть' : 'Открыть'} календарь месяца">${svg('plan')}</button></div></div>
+        <div class="day-meter" role="img" aria-label="Выполнено ${progress.done} из ${progress.total}"><i style="width:${percent}%"></i></div>
+        <div class="day-meter-note"><span>${progress.total ? `${progress.done} из ${progress.total} отмечено` : 'Пунктов режима нет'}</span><span>${progress.done ? `+${progress.done * ROUTINE_POINTS} баллов` : `+${ROUTINE_POINTS} за пункт`}</span></div>
+      </div>
       ${view.routineCalendarOpen ? calendar(key, 'routine') : ''}<div class="week-strip">${week}</div>
-      <div class="routine-progress-card" role="group" aria-label="Прогресс режима дня"><div class="row"><span class="routine-progress-icon" aria-hidden="true">${progress.total && progress.done === progress.total ? '✓' : '◉'}</span><div class="grow"><strong>${progress.total ? `${progress.done}/${progress.total} выполнено` : 'Нет пунктов режима'}</strong><small>${progress.total ? (key > today() ? 'Отметить можно в выбранный день' : progress.done === progress.total ? 'Все пункты отмечены' : `Осталось ${progress.total - progress.done} из ${progress.total}`) : 'Добавьте первый пункт'}</small></div><b>${progress.total ? `${Math.round((progress.done / progress.total) * 100)}%` : '—'}</b></div><div class="level-progress"><i style="width:${progress.total ? (progress.done / progress.total) * 100 : 0}%"></i></div><div class="routine-reward">+${ROUTINE_POINTS} баллов за пункт · за день +${progress.done * ROUTINE_POINTS}</div></div>
-      ${next ? `<div class="routine-next-row"><button class="routine-next" data-action="jump-routine-item" data-id="${safeId(next.id)}"><span class="routine-next-icon" aria-hidden="true">${next.kind === 'subject' ? '🎓' : '◷'}</span><span class="grow"><small>${nextIsLate ? 'ОСТАЛОСЬ ОТМЕТИТЬ' : 'ДАЛЬШЕ ПО ПЛАНУ'}</small><strong>${esc(next.title)}</strong><span>${next.time}${next.kind === 'subject' ? ` · ${esc(next.category)}` : ''}</span></span><b aria-hidden="true">›</b></button>${next.kind === 'routine' && key <= today() ? `<button class="routine-next-done" data-action="toggle-routine" data-date="${key}" data-id="${safeId(next.id)}" aria-label="Отметить выполненным: ${esc(next.title)}"><span aria-hidden="true">✓</span><small>Готово</small></button>` : ''}</div>` : ''}
       <div class="section-title">Расписание <small>${items.length} событий</small></div>${timeline}
       ${deadlines.length ? `<div class="section-title">Сроки задач <small>${deadlines.filter(t => !t.doneAt).length} осталось</small></div><div class="card">${agendaTaskRows(deadlines)}</div>` : ''}
       ${overdue.length ? `<div class="section-title">Просроченные задачи <small>${overdue.length}</small></div><div class="card">${agendaTaskRows(overdue)}</div>` : ''}

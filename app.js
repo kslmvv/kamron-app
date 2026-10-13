@@ -1,11 +1,11 @@
-/* Kamron APP 0.20.0 — собрано из src/. Не редактируйте этот файл: правки вносятся в src/ и применяются командой npm run build. */
+/* Kamron APP 0.21.0 — собрано из src/. Не редактируйте этот файл: правки вносятся в src/ и применяются командой npm run build. */
 (() => {
   // src/core/constants.js
   var KEY = "kamron-app-mvp-v1";
   var DAY = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   var TASK_POINTS = 50;
   var ROUTINE_POINTS = 10;
-  var APP_BUILD = true ? "MVP 0.20" : "MVP (dev)";
+  var APP_BUILD = true ? "MVP 0.21" : "MVP (dev)";
   var LINKABLE_PAGES = [
     "home",
     "more",
@@ -131,18 +131,21 @@
     ]
   ];
   var THEMES = {
-    sky: { name: "Небо", mood: "Лёгкий день", color: "#f3f5f7" },
-    night: { name: "Ночь", mood: "Спокойный вечер", color: "#171d26" },
-    sage: { name: "Шалфей", mood: "Спокойствие", color: "#f2f5ef" },
-    sunset: { name: "Рассвет", mood: "Тёплый настрой", color: "#faf5f1" }
+    ink: { name: "Чёрная", mood: "Ночь и OLED", color: "#000000" },
+    paper: { name: "Белая", mood: "Дневной свет", color: "#f6f7f9" },
+    deep: { name: "Тёмно-синяя", mood: "Мягкая темнота", color: "#0c1424" }
   };
   var OLD_THEMES = {
-    light: "sky",
-    dark: "night",
-    graphite: "night",
-    paper: "sky",
-    forest: "sage",
-    plum: "sunset"
+    light: "paper",
+    dark: "ink",
+    graphite: "ink",
+    paper: "paper",
+    forest: "paper",
+    plum: "paper",
+    sky: "paper",
+    night: "deep",
+    sage: "paper",
+    sunset: "paper"
   };
   var PREP_QUESTIONS = [
     "Объясни тему своими словами без конспекта.",
@@ -430,6 +433,9 @@
         title: item.title,
         done: item.kind === "routine" ? routineCompleted(key, item.id) : false
       })),
+      // Завтрашний день нужен обоим звонкам: вечером по нему строят план,
+      // утром — проверяют, не занято ли названное время.
+      routineTomorrow: dayItems(addDays(key, 1)).slice(0, 30).map((item) => ({ time: item.time, title: item.title })),
       tasks: allOpenTasks().slice(0, 60).map((t) => ({ title: t.title, kind: t.kind, due: t.due || "", source: t.source || "" })),
       lessons: data.subjects.flatMap(
         (subject) => upcomingLessons(subject, 3).map((lesson) => ({
@@ -1357,26 +1363,51 @@
       return `<button class="week-day ${k === key ? "active" : ""} ${p.total && p.done === p.total ? "routine-complete" : ""}" data-action="pick-day" data-date="${k}" aria-label="${esc(fmt(k, { weekday: "long", day: "numeric", month: "long" }))} · ${p.done} из ${p.total} пунктов" aria-pressed="${k === key}" ${k === today() ? 'aria-current="date"' : ""}><span>${DAY[fromKey(k).getDay()]}</span><strong>${fromKey(k).getDate()}</strong></button>`;
     }).join("");
     const items = dayItems(key), deadlines = dueTasks(key), overdue = key === today() ? allOpenTasks().filter((t) => t.due && t.due < key) : [], progress = routineProgress(key);
-    const currentHm = (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), next = key >= today() ? items.find(
-      (item) => (key > today() || item.time >= currentHm) && (item.kind !== "routine" || !routineCompleted(key, item.id))
-    ) || items.find((item) => item.kind === "routine" && !routineCompleted(key, item.id)) : null;
-    const nextIsLate = next && key === today() && next.time < currentHm;
-    const timeline = items.length ? `<div class="timeline">${items.map((item) => {
+    const currentHm = (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5);
+    const isToday = key === today();
+    const minutes = (hm) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
+    const atSameTime = /* @__PURE__ */ new Map();
+    items.forEach((item) => atSameTime.set(item.time, (atSameTime.get(item.time) || 0) + 1));
+    const rows = [];
+    let nowPlaced = false;
+    items.forEach((item, index) => {
+      const previous = items[index - 1];
+      if (isToday && !nowPlaced && item.time > currentHm) {
+        rows.push(`<div class="tl-now"><span>${currentHm}</span></div>`);
+        nowPlaced = true;
+      }
+      if (previous) {
+        const gap = minutes(item.time) - minutes(previous.time);
+        if (gap >= 90)
+          rows.push(
+            `<div class="tl-gap"><span>${Math.floor(gap / 60)} ч ${gap % 60 ? `${gap % 60} мин ` : ""}свободно</span></div>`
+          );
+      }
       const done = item.kind === "routine" && routineCompleted(key, item.id);
-      const status = item.kind === "routine" ? done ? `Готово · +${ROUTINE_POINTS} баллов` : key > today() ? "В плане" : key === today() && item.time > currentHm ? "Впереди" : key === today() ? "Можно отметить" : "Без отметки" : item.attendance === "present" ? "Был на занятии" : item.attendance === "absent" ? "Пропустил занятие" : key <= today() ? "Посещаемость не отмечена" : "Пара впереди";
-      return `<div class="timeline-item ${item.category === "Работа" ? "mint" : item.kind === "subject" ? "amber" : ""} ${done ? "routine-item-done" : ""}" data-routine-item="${safeId(item.id)}"><span class="time">${item.time}</span><div class="timeline-card ${item.kind === "routine" ? "routine-entry" : ""}"><div class="row">${item.kind === "routine" ? `<button class="check-btn routine-check ${done ? "done" : ""}" data-action="toggle-routine" data-date="${key}" data-id="${safeId(item.id)}" aria-label="${key > today() ? "Можно отметить после наступления дня" : done ? "Снять отметку выполнения" : "Отметить выполненным"}: ${esc(item.title)}" aria-pressed="${!!done}" ${key > today() ? "disabled" : ""}>${done ? "✓" : ""}</button>` : ""}<div class="grow"><strong>${esc(item.title)}</strong><small>${esc(item.category)}${item.room ? ` · ауд. ${esc(item.room)}` : ""}${item.kind === "routine" ? item.date ? " · Один раз" : " · Повтор" : ""}</small>${item.kind === "routine" ? `<span class="routine-entry-status ${done ? "is-done" : ""}">${status}</span>` : ""}</div>${item.kind === "routine" ? `<button class="delete-btn routine-edit" data-action="edit-event" data-id="${safeId(item.id)}" aria-label="Изменить пункт «${esc(item.title)}»">✎</button>` : `<button class="attendance-btn" data-action="lesson-options" data-parent="${safeId(item.id)}" data-date="${key}" aria-label="${key <= today() ? "Отметить посещаемость" : "Изменить пару"}">${item.attendance === "present" ? "✓ Был" : item.attendance === "absent" ? "Пропуск" : key <= today() ? "Отметить" : "⋯"}</button>`}</div>${item.kind === "subject" ? `<span class="lesson-status">${status}</span>` : ""}</div></div>`;
-    }).join("")}</div>` : empty(
+      const past = isToday && item.time <= currentHm;
+      const clash = atSameTime.get(item.time) > 1;
+      const meta = item.kind === "routine" ? `${esc(item.category)}${item.date ? " · один раз" : ""}` : `${esc(item.category)}${item.room ? ` · ауд. ${esc(item.room)}` : ""}`;
+      const attendance = item.attendance === "present" ? "✓ Был" : item.attendance === "absent" ? "Пропуск" : key <= today() ? "Отметить" : "⋯";
+      rows.push(
+        `<div class="tl-row ${item.kind === "subject" ? "is-lesson" : ""} ${done ? "is-done" : ""} ${past && !done && item.kind === "routine" ? "is-missed" : ""} ${clash ? "is-clash" : ""}" data-routine-item="${safeId(item.id)}"><span class="tl-time">${item.time}</span><div class="tl-card">` + (item.kind === "routine" ? `<button class="check-btn routine-check ${done ? "done" : ""}" data-action="toggle-routine" data-date="${key}" data-id="${safeId(item.id)}" aria-label="${key > today() ? "Можно отметить после наступления дня" : done ? "Снять отметку выполнения" : "Отметить выполненным"}: ${esc(item.title)}" aria-pressed="${!!done}" ${key > today() ? "disabled" : ""}>${done ? "✓" : ""}</button>` : `<span class="tl-lesson-mark" aria-hidden="true">🎓</span>`) + `<div class="grow"><strong>${esc(item.title)}</strong><small>${meta}${clash ? ' · <b class="tl-clash-note">пересечение</b>' : ""}</small></div>` + (item.kind === "routine" ? `<button class="delete-btn routine-edit" data-action="edit-event" data-id="${safeId(item.id)}" aria-label="Изменить пункт «${esc(item.title)}»">✎</button>` : `<button class="attendance-btn" data-action="lesson-options" data-parent="${safeId(item.id)}" data-date="${key}" aria-label="${key <= today() ? "Отметить посещаемость" : "Изменить пару"}">${attendance}</button>`) + `</div></div>`
+      );
+    });
+    if (isToday && !nowPlaced && items.length) rows.push(`<div class="tl-now"><span>${currentHm}</span></div>`);
+    const timeline = items.length ? `<div class="timeline">${rows.join("")}</div>` : empty(
       "🗓️",
       "День пока свободен",
       "Добавьте пункт в расписание или занятие по предмету.",
       "new-event",
       "Добавить пункт"
     );
+    const percent = progress.total ? Math.round(progress.done / progress.total * 100) : 0;
     return `${heading("ПЛАН НА КАЖДЫЙ ДЕНЬ", "Режим дня", "Отмечайте выполненное. Каждая дата хранит свой результат.", "new-event")}${mode}
-      <div class="routine-date-bar"><strong>${esc(fmt(key, { weekday: "long", day: "numeric", month: "long" }))}</strong><div>${key !== today() ? `<button class="routine-date-today" data-action="routine-today">Сегодня</button>` : ""}<button class="routine-date-calendar" data-action="toggle-routine-calendar" aria-expanded="${view.routineCalendarOpen}" aria-label="${view.routineCalendarOpen ? "Скрыть" : "Открыть"} календарь месяца">${svg("plan")}</button></div></div>
+      <div class="day-head">
+        <div class="day-head-top"><strong>${esc(fmt(key, { weekday: "long", day: "numeric", month: "long" }))}</strong><div>${key !== today() ? `<button class="routine-date-today" data-action="routine-today">Сегодня</button>` : ""}<button class="routine-date-calendar" data-action="toggle-routine-calendar" aria-expanded="${view.routineCalendarOpen}" aria-label="${view.routineCalendarOpen ? "Скрыть" : "Открыть"} календарь месяца">${svg("plan")}</button></div></div>
+        <div class="day-meter" role="img" aria-label="Выполнено ${progress.done} из ${progress.total}"><i style="width:${percent}%"></i></div>
+        <div class="day-meter-note"><span>${progress.total ? `${progress.done} из ${progress.total} отмечено` : "Пунктов режима нет"}</span><span>${progress.done ? `+${progress.done * ROUTINE_POINTS} баллов` : `+${ROUTINE_POINTS} за пункт`}</span></div>
+      </div>
       ${view.routineCalendarOpen ? calendar(key, "routine") : ""}<div class="week-strip">${week}</div>
-      <div class="routine-progress-card" role="group" aria-label="Прогресс режима дня"><div class="row"><span class="routine-progress-icon" aria-hidden="true">${progress.total && progress.done === progress.total ? "✓" : "◉"}</span><div class="grow"><strong>${progress.total ? `${progress.done}/${progress.total} выполнено` : "Нет пунктов режима"}</strong><small>${progress.total ? key > today() ? "Отметить можно в выбранный день" : progress.done === progress.total ? "Все пункты отмечены" : `Осталось ${progress.total - progress.done} из ${progress.total}` : "Добавьте первый пункт"}</small></div><b>${progress.total ? `${Math.round(progress.done / progress.total * 100)}%` : "—"}</b></div><div class="level-progress"><i style="width:${progress.total ? progress.done / progress.total * 100 : 0}%"></i></div><div class="routine-reward">+${ROUTINE_POINTS} баллов за пункт · за день +${progress.done * ROUTINE_POINTS}</div></div>
-      ${next ? `<div class="routine-next-row"><button class="routine-next" data-action="jump-routine-item" data-id="${safeId(next.id)}"><span class="routine-next-icon" aria-hidden="true">${next.kind === "subject" ? "🎓" : "◷"}</span><span class="grow"><small>${nextIsLate ? "ОСТАЛОСЬ ОТМЕТИТЬ" : "ДАЛЬШЕ ПО ПЛАНУ"}</small><strong>${esc(next.title)}</strong><span>${next.time}${next.kind === "subject" ? ` · ${esc(next.category)}` : ""}</span></span><b aria-hidden="true">›</b></button>${next.kind === "routine" && key <= today() ? `<button class="routine-next-done" data-action="toggle-routine" data-date="${key}" data-id="${safeId(next.id)}" aria-label="Отметить выполненным: ${esc(next.title)}"><span aria-hidden="true">✓</span><small>Готово</small></button>` : ""}</div>` : ""}
       <div class="section-title">Расписание <small>${items.length} событий</small></div>${timeline}
       ${deadlines.length ? `<div class="section-title">Сроки задач <small>${deadlines.filter((t) => !t.doneAt).length} осталось</small></div><div class="card">${agendaTaskRows(deadlines)}</div>` : ""}
       ${overdue.length ? `<div class="section-title">Просроченные задачи <small>${overdue.length}</small></div><div class="card">${agendaTaskRows(overdue)}</div>` : ""}
@@ -1660,7 +1691,7 @@
   // src/ui/shell.js
   function topbar() {
     const jarvisActive = ["jarvis", "project-ai", "seminar"].includes(view.page) || ["phone", "tech"].includes(view.page) && view.assistantBack === "jarvis";
-    $("#topbar").innerHTML = `<div class="brand"><div class="brand-mark">◉</div><div class="brand-name">Kamron APP</div></div><div class="top-actions"><button class="icon-btn" data-action="command-center" aria-label="Поиск и быстрые действия" title="Поиск">${svg("search")}</button><button class="icon-btn jarvis-trigger ${jarvisActive ? "active" : ""}" data-action="go" data-page="jarvis" aria-label="Открыть Jarvis" title="Jarvis" ${view.page === "jarvis" ? 'aria-current="page"' : ""}>${svg("jarvis")}<span>Jarvis</span></button></div>`;
+    $("#topbar").innerHTML = `<div class="brand"><div class="brand-mark" aria-hidden="true">К</div><div class="brand-name">Kamron APP</div></div><div class="top-actions"><button class="icon-btn" data-action="command-center" aria-label="Поиск и быстрые действия" title="Поиск">${svg("search")}</button><button class="icon-btn jarvis-trigger ${jarvisActive ? "active" : ""}" data-action="go" data-page="jarvis" aria-label="Открыть Jarvis" title="Jarvis" ${view.page === "jarvis" ? 'aria-current="page"' : ""}>${svg("jarvis")}<span>Jarvis</span></button></div>`;
   }
   function nav() {
     const items = [
@@ -1738,7 +1769,8 @@
     flushPrepAnswer();
     document.body.dataset.theme = resolveTheme(data.theme);
     document.querySelector('meta[name="theme-color"]').content = THEMES[resolveTheme(data.theme)].color;
-    document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content = data.theme === "night" ? "black-translucent" : "default";
+    const theme = resolveTheme(data.theme);
+    document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content = theme === "paper" ? "default" : "black-translucent";
     document.body.classList.toggle("reduce-motion", data.reduceMotion);
     topbar();
     nav();
@@ -2028,7 +2060,7 @@ ${checks}
     { id: uid(), time: "09:00", title: "Спокойное утро", category: "Личное", days: [0, 6] },
     { id: uid(), time: "12:00", title: "Свободный блок", category: "Личное", days: [0, 6] }
   ];
-  var resolveTheme = (theme) => THEMES[theme] ? theme : OLD_THEMES[theme] || "sky";
+  var resolveTheme = (theme) => THEMES[theme] ? theme : OLD_THEMES[theme] || "ink";
   var emptyVoiceReport = () => ({ done: "", missed: "", reason: "", tomorrow: "" });
   var defaultPhone = () => ({
     telegramUser: "",
@@ -2042,7 +2074,7 @@ ${checks}
   var defaults = () => ({
     version: 1,
     name: "Камрон",
-    theme: "sky",
+    theme: "ink",
     reduceMotion: false,
     reminders: false,
     lead: 10,

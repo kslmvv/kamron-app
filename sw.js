@@ -6,7 +6,7 @@
  * у пользователя. Все кэши с префиксом kamron-app- и другой версией
  * удаляются при активации.
  */
-const CACHE = 'kamron-app-v0.20.0';
+const CACHE = 'kamron-app-v0.21.0';
 const PREFIX = 'kamron-app-';
 const ASSETS = [
   './',

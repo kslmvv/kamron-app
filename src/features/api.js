@@ -10,7 +10,7 @@
  * и приложение продолжает работать в локальном режиме.
  */
 import { data } from '../core/state.js';
-import { dateKey, today } from '../core/utils.js';
+import { addDays, dateKey, today } from '../core/utils.js';
 import { allOpenTasks, dayItems, routineCompleted, upcomingLessons } from '../core/selectors.js';
 
 /** @returns {boolean} задан ли адрес сервера и ключ доступа */
@@ -79,6 +79,11 @@ export function snapshot() {
         title: item.title,
         done: item.kind === 'routine' ? routineCompleted(key, item.id) : false
       })),
+    // Завтрашний день нужен обоим звонкам: вечером по нему строят план,
+    // утром — проверяют, не занято ли названное время.
+    routineTomorrow: dayItems(addDays(key, 1))
+      .slice(0, 30)
+      .map(item => ({ time: item.time, title: item.title })),
     tasks: allOpenTasks()
       .slice(0, 60)
       .map(t => ({ title: t.title, kind: t.kind, due: t.due || '', source: t.source || '' })),

@@ -1,10 +1,12 @@
 {
   "name": "kamron-app-server",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "private": true,
   "type": "module",
   "description": "Серверная часть Kamron APP: Jarvis с реальной моделью, разбор материалов семинара, закрытый GitHub и статус Railway.",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"

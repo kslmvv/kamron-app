@@ -697,10 +697,10 @@ button.mini-panel:active {
 .week-day.active strong {
   color: #292219;
 }
+/* Лента дня строится сеткой «время | карточка», рельс ей не нужен:
+   колонка времени сама выравнивает взгляд. */
 .timeline {
-  border-left: 1px solid #ffffff35;
-  margin: 8px 0 0 42px;
-  padding-left: 17px;
+  margin: 8px 0 0;
 }
 .timeline-item {
   position: relative;
@@ -2184,113 +2184,82 @@ body[data-theme] .subject-card:active {
 }
 
 /* Glass-inspired navigation over calm, legible content surfaces. */
-body[data-theme='sky'] {
-  --bg: #e9f2fb;
-  --panel: rgba(255, 255, 255, 0.79);
-  --raised: rgba(255, 255, 255, 0.65);
-  --text: #19283a;
-  --muted: #586b80;
-  --line: rgba(40, 70, 105, 0.15);
-  --accent: #2367c7;
-  --accent-soft: rgba(35, 103, 199, 0.12);
-  --accent-ink: #fff;
-  --input: #fff;
-  --footer: rgba(250, 253, 255, 0.64);
-  --tile-ink: #19283a;
-  --purple: #6688d1;
-  --mint: #2367c7;
-  --amber: #da9958;
-  --rose: #be666a;
-  --seminar: #277c68;
-  --glass: rgba(255, 255, 255, 0.57);
-  --glass-edge: rgba(255, 255, 255, 0.88);
-  --glass-shadow: 0 14px 34px rgba(53, 85, 128, 0.14), inset 0 1px rgba(255, 255, 255, 0.9);
-  --wallpaper:
-    radial-gradient(circle at 13% 9%, rgba(186, 221, 252, 0.76), transparent 37%),
-    radial-gradient(circle at 96% 89%, rgba(251, 215, 194, 0.52), transparent 32%),
-    linear-gradient(160deg, #f6faff 0%, #e4effa 56%, #edf2f7 100%);
+/*
+ * Три темы. Белая для дня, чёрная для ночи и для экранов OLED, тёмно-синяя
+ * как середина. Текст в тёмных темах не чисто белый: чистый белый на чёрном
+ * даёт свечение по краям букв и быстро утомляет глаза.
+ */
+body[data-theme='paper'] {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --raised: #f0f2f5;
+  --text: #171c24;
+  --muted: #5a6573;
+  --line: #e1e5ea;
+  --accent: #2f6fd0;
+  --accent-soft: rgba(47, 111, 208, 0.1);
+  --accent-ink: #ffffff;
+  --input: #ffffff;
+  --footer: #ffffff;
+  --tile-ink: #171c24;
+  --purple: #6a7fd1;
+  --mint: #2f6fd0;
+  --amber: #b9792f;
+  --rose: #c05c60;
+  --seminar: #1f7a63;
+  --glass: #f0f2f5;
+  --glass-edge: #e1e5ea;
+  --glass-shadow: none;
+  --wallpaper: #f6f7f9;
   color-scheme: light;
 }
-body[data-theme='night'] {
-  --bg: #162134;
-  --panel: rgba(35, 50, 74, 0.88);
-  --raised: rgba(52, 72, 99, 0.75);
-  --text: #f4f7fc;
-  --muted: #b4c1d2;
-  --line: rgba(218, 233, 255, 0.15);
-  --accent: #9bcaff;
-  --accent-soft: rgba(155, 202, 255, 0.16);
-  --accent-ink: #142941;
-  --input: #1e2d44;
-  --footer: rgba(37, 53, 78, 0.68);
-  --tile-ink: #f4f7fc;
-  --purple: #b6adf1;
-  --mint: #9bcaff;
-  --amber: #f0bb7c;
-  --rose: #f0a3a8;
-  --seminar: #9fdac8;
-  --glass: rgba(49, 68, 96, 0.54);
-  --glass-edge: rgba(232, 243, 255, 0.26);
-  --glass-shadow: 0 18px 40px rgba(4, 11, 25, 0.31), inset 0 1px rgba(255, 255, 255, 0.17);
-  --wallpaper:
-    radial-gradient(circle at 18% 8%, rgba(85, 119, 165, 0.48), transparent 38%),
-    radial-gradient(circle at 94% 87%, rgba(101, 88, 130, 0.35), transparent 35%),
-    linear-gradient(165deg, #243550 0%, #152239 62%, #111d30 100%);
+body[data-theme='ink'] {
+  --bg: #000000;
+  --panel: #0e0f11;
+  --raised: #151619;
+  --text: #e7e8ea;
+  --muted: #8b8f96;
+  --line: #24262b;
+  --accent: #7fb2ff;
+  --accent-soft: rgba(127, 178, 255, 0.14);
+  --accent-ink: #04070d;
+  --input: #141518;
+  --footer: #0b0c0e;
+  --tile-ink: #e7e8ea;
+  --purple: #a79af0;
+  --mint: #7fb2ff;
+  --amber: #e0a868;
+  --rose: #e38f95;
+  --seminar: #6fd0b4;
+  --glass: #151619;
+  --glass-edge: #24262b;
+  --glass-shadow: none;
+  --wallpaper: #000000;
   color-scheme: dark;
 }
-body[data-theme='sage'] {
-  --bg: #edf3ec;
-  --panel: rgba(255, 255, 252, 0.8);
-  --raised: rgba(255, 255, 252, 0.67);
-  --text: #24362f;
-  --muted: #576c60;
-  --line: rgba(51, 91, 70, 0.15);
-  --accent: #2d7861;
-  --accent-soft: rgba(45, 120, 97, 0.13);
-  --accent-ink: #fff;
-  --input: #fffefa;
-  --footer: rgba(252, 255, 250, 0.66);
-  --tile-ink: #24362f;
-  --purple: #8295b5;
-  --mint: #2d7861;
-  --amber: #bd8b52;
-  --rose: #bd6b67;
-  --seminar: #26725d;
-  --glass: rgba(255, 255, 250, 0.58);
-  --glass-edge: rgba(255, 255, 255, 0.9);
-  --glass-shadow: 0 14px 34px rgba(73, 104, 80, 0.13), inset 0 1px rgba(255, 255, 255, 0.9);
-  --wallpaper:
-    radial-gradient(circle at 12% 10%, rgba(201, 226, 202, 0.85), transparent 37%),
-    radial-gradient(circle at 96% 87%, rgba(233, 220, 188, 0.43), transparent 35%),
-    linear-gradient(165deg, #f8fbf4 0%, #e7f0e9 62%, #f3f3e8 100%);
-  color-scheme: light;
-}
-body[data-theme='sunset'] {
-  --bg: #f8eee8;
-  --panel: rgba(255, 253, 250, 0.82);
-  --raised: rgba(255, 250, 246, 0.72);
-  --text: #3b2d30;
-  --muted: #75636b;
-  --line: rgba(111, 76, 84, 0.16);
-  --accent: #a84e4b;
-  --accent-soft: rgba(182, 91, 88, 0.12);
-  --accent-ink: #fff;
-  --input: #fffdfa;
-  --footer: rgba(255, 252, 249, 0.66);
-  --tile-ink: #3b2d30;
-  --purple: #ae89bd;
-  --mint: #a84e4b;
-  --amber: #c18c52;
-  --rose: #a84e4b;
-  --seminar: #2c7568;
-  --glass: rgba(255, 252, 249, 0.59);
-  --glass-edge: rgba(255, 255, 255, 0.88);
-  --glass-shadow: 0 14px 34px rgba(128, 77, 79, 0.13), inset 0 1px rgba(255, 255, 255, 0.9);
-  --wallpaper:
-    radial-gradient(circle at 12% 10%, rgba(253, 215, 197, 0.82), transparent 38%),
-    radial-gradient(circle at 94% 87%, rgba(225, 209, 227, 0.47), transparent 34%),
-    linear-gradient(165deg, #fff8f2 0%, #f8e8e4 59%, #f7f2ed 100%);
-  color-scheme: light;
+body[data-theme='deep'] {
+  --bg: #0c1424;
+  --panel: #121c30;
+  --raised: #18243c;
+  --text: #e3eaf6;
+  --muted: #94a3bd;
+  --line: #223050;
+  --accent: #86b4ff;
+  --accent-soft: rgba(134, 180, 255, 0.14);
+  --accent-ink: #081225;
+  --input: #16213a;
+  --footer: #0f1829;
+  --tile-ink: #e3eaf6;
+  --purple: #a9a2f0;
+  --mint: #86b4ff;
+  --amber: #e2ac6d;
+  --rose: #e795a0;
+  --seminar: #72cdb6;
+  --glass: #18243c;
+  --glass-edge: #223050;
+  --glass-shadow: none;
+  --wallpaper: #0c1424;
+  color-scheme: dark;
 }
 body[data-theme] {
   background: var(--bg);
@@ -2427,16 +2396,20 @@ body[data-theme] .dash-tile.gym {
   --wash: rgba(235, 210, 219, 0.78);
   background: linear-gradient(145deg, var(--wash), var(--panel) 72%);
 }
-body[data-theme='night'] .dash-tile.routine {
+body[data-theme='ink'] .dash-tile.routine,
+body[data-theme='deep'] .dash-tile.routine {
   --wash: rgba(67, 99, 138, 0.83);
 }
-body[data-theme='night'] .dash-tile.work {
+body[data-theme='ink'] .dash-tile.work,
+body[data-theme='deep'] .dash-tile.work {
   --wash: rgba(59, 99, 90, 0.81);
 }
-body[data-theme='night'] .dash-tile.uni {
+body[data-theme='ink'] .dash-tile.uni,
+body[data-theme='deep'] .dash-tile.uni {
   --wash: rgba(115, 85, 71, 0.83);
 }
-body[data-theme='night'] .dash-tile.gym {
+body[data-theme='ink'] .dash-tile.gym,
+body[data-theme='deep'] .dash-tile.gym {
   --wash: rgba(109, 76, 100, 0.83);
 }
 body[data-theme] .tile-emoji {
@@ -2455,9 +2428,10 @@ body[data-theme] .tile-emoji {
   filter: none;
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-body[data-theme='night'] .tile-emoji {
-  background: rgba(241, 247, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.25);
+body[data-theme='ink'] .tile-emoji,
+body[data-theme='deep'] .tile-emoji {
+  background: rgba(241, 247, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 body[data-theme] .dash-tile:nth-child(even) .tile-emoji {
   transform: rotate(6deg);
@@ -5776,7 +5750,8 @@ body.reduce-motion .ai-entry {
 .voice-form input[type='time'] {
   color-scheme: light;
 }
-body[data-theme='night'] .voice-form input[type='time'] {
+body[data-theme='ink'] .voice-form input[type='time'],
+body[data-theme='deep'] .voice-form input[type='time'] {
   color-scheme: dark;
 }
 .voice-form textarea {
@@ -7358,67 +7333,27 @@ body[data-theme] .chat-composer textarea {
   opacity: 0.5;
 }
 
-/* Quieter, opaque surfaces. Themes keep their color without a glass layer. */
-body[data-theme='sky'] {
-  --bg: #f3f5f7;
-  --panel: #ffffff;
-  --raised: #edf1f5;
-  --line: #dce3e9;
-  --accent: #315f9a;
-  --accent-soft: #e6eef8;
-  --mint: #315f9a;
-  --glass: #edf1f5;
-  --glass-edge: #dce3e9;
-  --glass-shadow: none;
-  --wallpaper: #f3f5f7;
-  --tile-day-flat: #e9eef4;
-  --tile-work-flat: #e9f0ec;
-  --tile-uni-flat: #f2ece5;
-  --tile-gym-flat: #f0e9ed;
+/* Плитки разделов. Оттенок едва заметен — он различает разделы, а не
+   раскрашивает экран. */
+body[data-theme='paper'] {
+  --tile-day-flat: #eceff4;
+  --tile-work-flat: #eaf0ec;
+  --tile-uni-flat: #f1ece4;
+  --tile-gym-flat: #f0eaee;
 }
-body[data-theme='night'] {
-  --bg: #171d26;
-  --panel: #222b36;
-  --raised: #2b3542;
-  --line: #3a4654;
-  --accent: #a6c8f1;
-  --accent-soft: #314660;
-  --glass: #2b3542;
-  --glass-edge: #3a4654;
-  --glass-shadow: none;
-  --wallpaper: #171d26;
-  --tile-day-flat: #2a394c;
-  --tile-work-flat: #293c35;
-  --tile-uni-flat: #40362f;
-  --tile-gym-flat: #3c303d;
+body[data-theme='ink'] {
+  --tile-day-flat: #0e131c;
+  --tile-work-flat: #0c1614;
+  --tile-uni-flat: #11111d;
+  --tile-gym-flat: #150f1a;
 }
-body[data-theme='sage'] {
-  --bg: #f2f5ef;
-  --panel: #ffffff;
-  --raised: #e9efe7;
-  --line: #dce5db;
-  --glass: #e9efe7;
-  --glass-edge: #dce5db;
-  --glass-shadow: none;
-  --wallpaper: #f2f5ef;
-  --tile-day-flat: #e8eee8;
-  --tile-work-flat: #e2ede5;
-  --tile-uni-flat: #f0ece1;
-  --tile-gym-flat: #eee8e8;
-}
-body[data-theme='sunset'] {
-  --bg: #faf5f1;
-  --panel: #ffffff;
-  --raised: #f3ebe5;
-  --line: #eadfd8;
-  --glass: #f3ebe5;
-  --glass-edge: #eadfd8;
-  --glass-shadow: none;
-  --wallpaper: #faf5f1;
-  --tile-day-flat: #f2e9e1;
-  --tile-work-flat: #ebeee6;
-  --tile-uni-flat: #f2e7df;
-  --tile-gym-flat: #f0e6e9;
+/* Оттенки плиток держатся холодной стороны: тёплый коричневый рядом с
+   синим читается как грязь, а не как другой раздел. */
+body[data-theme='deep'] {
+  --tile-day-flat: #13243f;
+  --tile-work-flat: #102a2a;
+  --tile-uni-flat: #1a2146;
+  --tile-gym-flat: #231a3d;
 }
 body[data-theme] .app-shell {
   background: var(--bg);
@@ -7497,7 +7432,8 @@ body[data-theme] .dash-tile.gym {
   background: var(--tile-gym-flat);
 }
 body[data-theme] .tile-emoji,
-body[data-theme='night'] .tile-emoji {
+body[data-theme='ink'] .tile-emoji,
+body[data-theme='deep'] .tile-emoji {
   background: var(--panel);
   border-color: var(--line);
   box-shadow: none;
@@ -7595,4 +7531,171 @@ body[data-theme] .sheet::backdrop {
   align-self: stretch;
   max-width: none;
   margin: 8px 0 12px;
+}
+
+/* ── Режим дня: лента ──────────────────────────────────────────────────
+   Главный вопрос в этом разделе — «что сейчас и что дальше», поэтому
+   расписание начинается почти сразу, а итоги дня ужаты в одну строку. */
+.day-head {
+  margin: 14px 0 10px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+.day-head-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.day-head-top strong {
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.day-head-top > div {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.day-meter {
+  height: 5px;
+  margin-top: 11px;
+  border-radius: 99px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.day-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+  transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.day-meter-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 7px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.tl-row {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  align-items: start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.tl-time {
+  padding-top: 13px;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+.tl-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 52px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.tl-card .grow {
+  min-width: 0;
+}
+.tl-card strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.tl-card small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.tl-row.is-done .tl-card strong {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+/* Прошедшее и неотмеченное — не ошибка, но и не фон: тонкая полоса слева
+   отличает его от того, что ещё впереди. */
+.tl-row.is-missed .tl-card {
+  border-left: 3px solid var(--amber);
+}
+.tl-row.is-lesson .tl-card {
+  border-left: 3px solid var(--purple);
+}
+.tl-row.is-clash .tl-card {
+  border-color: var(--rose);
+}
+.tl-clash-note {
+  color: var(--rose);
+  font-weight: 600;
+}
+.tl-lesson-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  font-size: 17px;
+}
+
+/* Где человек находится прямо сейчас. */
+.tl-now {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 10px 56px;
+}
+.tl-now::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--rose);
+}
+.tl-now::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--rose), transparent);
+}
+.tl-now span {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--rose);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Свободный промежуток: в него и ставятся новые дела. */
+.tl-gap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 8px 56px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.tl-gap::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Знак в шапке — та же буква, что на иконке приложения. */
+.brand-mark {
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }

@@ -21,7 +21,7 @@ export function topbar() {
     ['jarvis', 'project-ai', 'seminar'].includes(view.page) ||
     (['phone', 'tech'].includes(view.page) && view.assistantBack === 'jarvis');
   $('#topbar').innerHTML =
-    `<div class="brand"><div class="brand-mark">◉</div><div class="brand-name">Kamron APP</div></div><div class="top-actions"><button class="icon-btn" data-action="command-center" aria-label="Поиск и быстрые действия" title="Поиск">${svg('search')}</button><button class="icon-btn jarvis-trigger ${jarvisActive ? 'active' : ''}" data-action="go" data-page="jarvis" aria-label="Открыть Jarvis" title="Jarvis" ${view.page === 'jarvis' ? 'aria-current="page"' : ''}>${svg('jarvis')}<span>Jarvis</span></button></div>`;
+    `<div class="brand"><div class="brand-mark" aria-hidden="true">К</div><div class="brand-name">Kamron APP</div></div><div class="top-actions"><button class="icon-btn" data-action="command-center" aria-label="Поиск и быстрые действия" title="Поиск">${svg('search')}</button><button class="icon-btn jarvis-trigger ${jarvisActive ? 'active' : ''}" data-action="go" data-page="jarvis" aria-label="Открыть Jarvis" title="Jarvis" ${view.page === 'jarvis' ? 'aria-current="page"' : ''}>${svg('jarvis')}<span>Jarvis</span></button></div>`;
 }
 
 export function nav() {
@@ -113,8 +113,11 @@ export function render() {
   flushPrepAnswer();
   document.body.dataset.theme = resolveTheme(data.theme);
   document.querySelector('meta[name="theme-color"]').content = THEMES[resolveTheme(data.theme)].color;
+  // В тёмных темах строка состояния сливается с фоном; в светлой остаётся
+  // системной, иначе чёрный текст ложится на светлый фон нечитаемо.
+  const theme = resolveTheme(data.theme);
   document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]').content =
-    data.theme === 'night' ? 'black-translucent' : 'default';
+    theme === 'paper' ? 'default' : 'black-translucent';
   document.body.classList.toggle('reduce-motion', data.reduceMotion);
   topbar();
   nav();
