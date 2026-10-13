@@ -22,7 +22,7 @@ function endpoint(path) {
   return `${String(data.server.url).replace(/\/+$/, '')}${path}`;
 }
 
-async function request(path, { method = 'GET', body, timeout = 70000 } = {}) {
+export async function request(path, { method = 'GET', body, timeout = 70000 } = {}) {
   if (!serverConfigured()) throw new Error('Сервер Jarvis не подключён');
   const control = new AbortController();
   const timer = setTimeout(() => control.abort(), timeout);

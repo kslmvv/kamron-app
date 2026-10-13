@@ -25,6 +25,7 @@ import {
 } from './features/export.js';
 import { deletePrepFile, getPrepFile } from './features/files.js';
 import { checkServer, githubCommit, serverConfigured, syncSnapshot } from './features/api.js';
+import { pullChanges } from './features/incoming.js';
 import { clearChat, sendChatMessage } from './features/chat.js';
 import { reviewPrep } from './features/prep.js';
 import { checkReminders } from './features/reminders.js';
@@ -1039,6 +1040,19 @@ window.addEventListener('hashchange', () => {
  */
 onSaved.push(() => syncSnapshot());
 syncSnapshot({ immediate: true });
+
+/**
+ * Записи, надиктованные в звонке. Забираем при открытии и раз в пять минут:
+ * звонок мог случиться, пока приложение было закрыто.
+ */
+pullChanges().then(count => {
+  if (count) refreshPage(false);
+});
+setInterval(() => {
+  pullChanges().then(count => {
+    if (count) refreshPage(false);
+  });
+}, 300000);
 
 const deepLink = pageFromLocation();
 if (deepLink) view.page = deepLink;

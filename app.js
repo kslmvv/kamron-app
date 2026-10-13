@@ -2440,6 +2440,119 @@ ${checks}
     return kind === "personal" ? data.personalTasks : getParent(kind, parent)?.tasks;
   }
 
+  // src/features/incoming.js
+  var CATEGORIES = ["Идея", "Личное", "Важное"];
+  var ROUTINE_CATEGORIES = ["Личное", "Работа", "Учёба"];
+  function taskList(kind) {
+    if (kind === "work") return data.projects[0]?.tasks;
+    if (kind === "uni") return data.subjects[0]?.tasks;
+    return data.personalTasks;
+  }
+  function sameTaskExists(list, title) {
+    const needle = title.trim().toLowerCase();
+    return (list || []).some((task) => !task.doneAt && task.title.trim().toLowerCase() === needle);
+  }
+  function applyTask(payload) {
+    const title = String(payload.title || "").trim().slice(0, 120);
+    if (!title) return false;
+    const list = taskList(payload.kind) || data.personalTasks;
+    if (sameTaskExists(list, title)) return true;
+    list.push({
+      id: uid(),
+      title,
+      due: /^\d{4}-\d{2}-\d{2}$/.test(payload.due || "") ? payload.due : "",
+      priority: payload.priority === "high" ? "high" : "normal",
+      source: "звонок",
+      doneAt: null
+    });
+    return true;
+  }
+  function applyRoutine(payload) {
+    const time = String(payload.time || "");
+    const title = String(payload.title || "").trim().slice(0, 120);
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !title) return false;
+    const days = Array.isArray(payload.days) ? [...new Set(payload.days.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))] : [];
+    if (data.routine.some((item) => item.time === time && item.title.trim().toLowerCase() === title.toLowerCase()))
+      return true;
+    data.routine.push({
+      id: uid(),
+      time,
+      title,
+      category: ROUTINE_CATEGORIES.includes(payload.category) ? payload.category : "Личное",
+      // Без дней недели это разовое дело, и оно привязывается к сегодняшнему дню.
+      ...days.length ? { days } : { days: [], date: today() }
+    });
+    return true;
+  }
+  function applyNote(payload) {
+    const body = String(payload.body || "").trim().slice(0, 4e3);
+    if (!body) return false;
+    data.notes.unshift({
+      id: uid(),
+      title: String(payload.title || "").slice(0, 120),
+      body,
+      category: CATEGORIES.includes(payload.category) ? payload.category : "Личное",
+      pinned: false,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    return true;
+  }
+  function applyComplete(payload) {
+    const needle = String(payload.title || "").trim().toLowerCase();
+    if (!needle) return false;
+    const lists = [
+      data.personalTasks,
+      ...data.projects.map((project) => project.tasks),
+      ...data.subjects.map((subject) => subject.tasks)
+    ];
+    for (const list of lists) {
+      const task = (list || []).find((x) => !x.doneAt && x.title.trim().toLowerCase() === needle);
+      if (task) {
+        task.doneAt = (/* @__PURE__ */ new Date()).toISOString();
+        return true;
+      }
+    }
+    return true;
+  }
+  var APPLY = {
+    task: applyTask,
+    routine: applyRoutine,
+    note: applyNote,
+    complete: applyComplete
+  };
+  async function pullChanges() {
+    if (!serverConfigured()) return;
+    let changes;
+    try {
+      ({ изменения: changes } = await request("/api/changes", { timeout: 15e3 }));
+    } catch (_) {
+      return;
+    }
+    if (!Array.isArray(changes) || !changes.length) return;
+    const applied = [];
+    for (const change of changes) {
+      const handler = APPLY[change?.kind];
+      if (!handler) {
+        applied.push(change.id);
+        continue;
+      }
+      try {
+        if (handler(change.data || {})) applied.push(change.id);
+      } catch (_) {
+      }
+    }
+    if (!applied.length) return;
+    if (!save()) return;
+    try {
+      await request("/api/changes/ack", { method: "POST", body: { ids: applied } });
+    } catch (_) {
+    }
+    toast(
+      applied.length === 1 ? "Добавлена запись из звонка" : `Добавлено записей из звонка: ${applied.length}`
+    );
+    return applied.length;
+  }
+
   // src/features/prep.js
   var SENDABLE = /^(image\/(png|jpe?g|gif|webp)|application\/pdf)$/;
   var BUDGET = 8 * 1024 * 1024;
@@ -3684,6 +3797,14 @@ ${checks}
   });
   onSaved.push(() => syncSnapshot());
   syncSnapshot({ immediate: true });
+  pullChanges().then((count) => {
+    if (count) refreshPage(false);
+  });
+  setInterval(() => {
+    pullChanges().then((count) => {
+      if (count) refreshPage(false);
+    });
+  }, 3e5);
   var deepLink = pageFromLocation();
   if (deepLink) view.page = deepLink;
   rememberLocation();

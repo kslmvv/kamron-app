@@ -16,6 +16,7 @@ import logging
 
 import aiohttp
 
+from .actions import TOOLS, apply
 from .config import config
 
 log = logging.getLogger("realtime")
@@ -46,6 +47,7 @@ class RealtimeSession:
         # Человек заговорил — всё недосказанное надо выбросить, включая то,
         # что уже вынуто из очереди в буфер отправки.
         self.flush_requested = False
+        self.actions: list[dict] = []
         self.usage = {
             "audio_in": 0,
             "audio_cached": 0,
@@ -76,6 +78,10 @@ class RealtimeSession:
                     "type": "realtime",
                     "output_modalities": ["audio"],
                     "instructions": self.instructions,
+                    # Инструменты записи: без них разговор остаётся беседой,
+                    # а сказанное никуда не попадает.
+                    "tools": TOOLS,
+                    "tool_choice": "auto",
                     "audio": {
                         "input": {
                             "format": {"type": "audio/pcm", "rate": SAMPLE_RATE},
@@ -111,6 +117,10 @@ class RealtimeSession:
                     while not self.outgoing.empty():
                         self.outgoing.get_nowait()
                     self.flush_requested = True
+                elif kind == "response.function_call_arguments.done":
+                    # Вызов выполняем в отдельной задаче: чтение событий
+                    # нельзя останавливать, иначе звук модели встанет.
+                    asyncio.create_task(self._run_tool(event))
                 elif kind == "response.done":
                     self._count(event.get("response", {}).get("usage"))
                 elif kind == "error":
@@ -119,6 +129,35 @@ class RealtimeSession:
             raise
         except Exception as error:  # noqa: BLE001 — разговор важнее исключения
             log.error("Чтение Realtime прервано: %s", error)
+
+    async def _run_tool(self, event: dict) -> None:
+        """Выполняет вызов инструмента и возвращает модели исход."""
+        name = event.get("name", "")
+        call_id = event.get("call_id", "")
+        try:
+            arguments = json.loads(event.get("arguments") or "{}")
+        except json.JSONDecodeError:
+            arguments = {}
+        self.actions.append({"действие": name, "аргументы": arguments})
+        try:
+            result = await apply(name, arguments)
+        except Exception as error:  # noqa: BLE001 — молчать об отказе нельзя
+            log.error("Инструмент %s не отработал: %s", name, error)
+            result = "Не записано: внутренняя ошибка"
+        if self.closed or not self._ws or self._ws.closed:
+            return
+        await self._ws.send_json(
+            {
+                "type": "conversation.item.create",
+                "item": {
+                    "type": "function_call_output",
+                    "call_id": call_id,
+                    "output": result,
+                },
+            }
+        )
+        # Без этого модель ждёт и молчит: исход вызова сам речью не станет.
+        await self._ws.send_json({"type": "response.create"})
 
     def _count(self, usage: dict | None) -> None:
         """Складывает токены ответа. Без этого стоимость разговора — догадка."""

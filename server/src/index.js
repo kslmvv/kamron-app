@@ -14,6 +14,7 @@ import { seminar } from './routes/seminar.js';
 import { github } from './routes/github.js';
 import { railway } from './routes/railway.js';
 import { saveSnapshot, readSnapshot, snapshotAge } from './snapshot.js';
+import { addChange, listChanges, ackChanges } from './changes.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -76,6 +77,27 @@ app.get('/api/snapshot', (req, res) => {
   const snapshot = readSnapshot();
   if (!snapshot) return res.status(404).json({ error: 'Снимок ещё не присылали' });
   res.json({ snapshot, возрастМинут: snapshotAge() });
+});
+
+/**
+ * Изменения, надиктованные в звонке. Разговор их складывает,
+ * приложение забирает и подтверждает применённые.
+ */
+app.post('/api/changes', (req, res, next) => {
+  try {
+    const { kind, data } = req.body || {};
+    res.json({ ok: true, change: addChange(kind, data) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/changes', (req, res) => {
+  res.json({ изменения: listChanges() });
+});
+
+app.post('/api/changes/ack', (req, res) => {
+  res.json({ ok: true, применено: ackChanges(req.body?.ids) });
 });
 
 app.use('/api/jarvis', jarvis);

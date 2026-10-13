@@ -321,6 +321,7 @@ class Caller:
                 "секунд": round(loop.time() - started, 1),
                 "секунд_речи_модели": round(spoke, 1),
                 "снимок_минут": age,
+                "записано": session.actions,
                 "расход": spend,
                 "квота": self.quota(),
             }
