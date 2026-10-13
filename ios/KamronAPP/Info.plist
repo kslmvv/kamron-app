@@ -2,12 +2,35 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- Ключи ниже Xcode подставляет сам только когда генерирует Info.plist.
+       Здесь файл свой, поэтому они перечислены явно: без CFBundleExecutable
+       и CFBundleIdentifier система не считает сборку приложением — она
+       устанавливается молча и не появляется на экране «Домой». -->
+  <key>CFBundleDevelopmentRegion</key>
+  <string>ru</string>
+  <key>CFBundleExecutable</key>
+  <string>$(EXECUTABLE_NAME)</string>
+  <key>CFBundleIdentifier</key>
+  <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>$(PRODUCT_NAME)</string>
+  <key>CFBundlePackageType</key>
+  <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+
+  <!-- Имя под иконкой. Отдельно от CFBundleName: в нём пробел, а имя
+       исполняемого файла с пробелом создаёт лишние хлопоты. -->
   <key>CFBundleDisplayName</key>
   <string>Kamron APP</string>
+
   <key>CFBundleShortVersionString</key>
   <string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key>
   <string>$(CURRENT_PROJECT_VERSION)</string>
+
+  <key>LSRequiresIPhoneOS</key>
+  <true/>
 
   <!-- Приложение вертикальное: так же заявлено в манифесте PWA. -->
   <key>UISupportedInterfaceOrientations</key>

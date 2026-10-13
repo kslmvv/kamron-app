@@ -29,8 +29,13 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kslmvv.kamronapp
-        PRODUCT_NAME: Kamron APP
+        # PRODUCT_NAME без пробела: от него зависит имя исполняемого файла.
+        # Красивое имя под иконкой задаёт CFBundleDisplayName в Info.plist.
+        PRODUCT_NAME: KamronAPP
         INFOPLIST_FILE: KamronAPP/Info.plist
+        # Info.plist свой, поэтому генератор Xcode выключен: иначе он
+        # перезапишет файл и потеряет заданные в нём ключи.
+        GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_USER_SCRIPT_SANDBOXING: YES
