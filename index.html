@@ -2,42 +2,253 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <title>Kamron APP — мой день</title>
+    <meta
+      name="description"
+      content="Режим дня, который держит: честное время, питомец с характером и напоминания."
+    />
+    <meta name="theme-color" content="#dcf45e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Kamron APP" />
-    <meta name="format-detection" content="telephone=no" />
-    <meta name="description" content="Kamron APP: планы, проекты, университет, Jarvis, заметки и игры." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Kamron" />
+    <meta name="color-scheme" content="light" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
-    <title>Kamron APP — мой день</title>
   </head>
-  <body data-theme="sky">
-    <div class="app-shell" id="app">
-      <header class="topbar" id="topbar"></header>
-      <main class="page" id="page"></main>
-      <nav class="bottom-nav" id="nav" aria-label="Основная навигация"></nav>
+  <body>
+    <div class="backdrop"></div>
+
+    <div class="wrap">
+      <header>
+        <div class="who"><span class="avatar">К</span><span id="dayLabel">—</span></div>
+        <button type="button" class="pill" id="streak"><i>🔥</i> <b>0</b></button>
+      </header>
+
+      <!-- ── Сегодня ─────────────────────────────────────────────────────── -->
+      <section class="view" id="viewToday">
+        <div class="pet" id="pet" data-anim="idle" data-tone="plain">
+          <div class="blob-hold">
+            <div class="shadow"></div>
+            <div class="blob"></div>
+            <i class="crest" id="crest"></i>
+            <svg class="face" viewBox="-50 -50 100 100" aria-hidden="true">
+              <ellipse class="blush" cx="-26" cy="8" rx="8" ry="5"></ellipse>
+              <ellipse class="blush" cx="26" cy="8" rx="8" ry="5"></ellipse>
+              <path class="brow bl" id="browL" d="M -28 -22 L -10 -24"></path>
+              <path class="brow br" id="browR" d="M 10 -24 L 28 -22"></path>
+              <g class="eyes" id="eyes">
+                <circle class="eye" cx="-14" cy="-2" r="5.6"></circle>
+                <circle class="eye" cx="14" cy="-2" r="5.6"></circle>
+                <path class="lid" d="M -20 -2 C -17 3, -11 3, -8 -2"></path>
+                <path class="lid" d="M 8 -2 C 11 3, 17 3, 20 -2"></path>
+              </g>
+              <g class="mouthbox" id="mouthbox">
+                <path class="mouth" id="mouth" d="M -15 11 C -8 20, 8 20, 15 11"></path>
+              </g>
+            </svg>
+            <i class="deco d1" id="deco1">✨</i><i class="deco d2" id="deco2">🎉</i
+            ><i class="deco d3" id="deco3">⭐️</i>
+          </div>
+        </div>
+        <p class="say" id="say">—</p>
+        <button type="button" class="why" id="why" hidden>почему?</button>
+        <p class="whyText" id="whyText" hidden></p>
+
+        <div class="card glass">
+          <small class="cap" id="doneCount">—</small>
+          <div class="progress-top">
+            <div class="progress-num"><span id="pct">0</span><small>%</small></div>
+            <div class="progress-word" id="praise">—</div>
+          </div>
+          <div class="bar"><i class="hit" id="barHit"></i><i class="miss" id="barMiss"></i></div>
+          <div class="lost" id="lost" hidden></div>
+        </div>
+
+        <button type="button" class="callout glass" id="revCall" hidden>
+          <span class="tile rose" style="font-size: 20px">🌙</span>
+          <span><b>Разбор дня</b><small id="revSub">—</small></span
+          ><span class="chev">›</span>
+        </button>
+
+        <div class="sec-head">
+          <span class="cap">Привычки</span>
+          <small id="habLink" style="cursor: pointer; text-decoration: underline">все</small>
+        </div>
+        <div class="list" id="habTop"></div>
+
+        <div class="sec-head">
+          <span class="cap">План дня</span>
+          <div style="display: flex; align-items: center; gap: 10px">
+            <small id="planMeta">—</small>
+            <button type="button" class="mini soft" id="focusBtn" aria-label="Фокус" hidden>◎</button>
+            <button type="button" class="mini" id="addTask" aria-label="Добавить задачу">+</button>
+          </div>
+        </div>
+        <div class="list" id="list"></div>
+      </section>
+
+      <!-- ── Чат ─────────────────────────────────────────────────────────── -->
+      <section class="view" id="viewChat" hidden>
+        <div id="chatLive">
+          <div class="sec-head" style="margin-top: 6px">
+            <span class="cap">Jarvis</span>
+            <button type="button" class="pill" id="toHist"><i>🗂</i> История</button>
+          </div>
+          <div class="chat-hello" id="chatHello">
+            <span class="badge"><i style="font-family: var(--emoji)">🫧</i> на связи</span>
+            <h2>Привет, Камрон.<br />Чем помочь?</h2>
+            <p>Спроси про день — он знает твой план.</p>
+          </div>
+          <div class="chips" id="chips"></div>
+          <div class="thread" id="thread"></div>
+          <div style="height: 78px"></div>
+        </div>
+
+        <div id="chatHist" hidden>
+          <button type="button" class="back" id="histBack">‹ Назад в чат</button>
+          <div class="picks" id="histTabs"></div>
+          <div id="histBody"></div>
+          <div style="height: 30px"></div>
+        </div>
+      </section>
+
+      <!-- ── Календарь ───────────────────────────────────────────────────── -->
+      <section class="view" id="viewCal" hidden>
+        <button type="button" class="back" id="calBack">‹ Настройки</button>
+        <div class="stats">
+          <div class="stat glass"><b id="stStreak">0</b><small>дней подряд</small></div>
+          <div class="stat glass"><b id="stAvg">0%</b><small>средний месяц</small></div>
+          <div class="stat glass"><b id="stGoal">0</b><small>дней в цель</small></div>
+        </div>
+
+        <div class="card glass">
+          <div class="cal-head">
+            <b id="calTitle">—</b>
+            <div class="cal-nav">
+              <button type="button" id="calPrev" aria-label="Назад">‹</button>
+              <button type="button" id="calNext" aria-label="Вперёд">›</button>
+            </div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+
+        <div class="card glass" id="dayCard"></div>
+
+        <div class="sec-head">
+          <span class="cap">Что видно по данным</span><small>зеркало, а не оценка</small>
+        </div>
+        <div id="insights"></div>
+
+        <div class="sec-head"><span class="cap">Последние 14 дней</span><small id="heatMeta">—</small></div>
+        <div class="card glass" style="padding: 16px"><div class="heat" id="heat"></div></div>
+
+        <div class="sec-head"><span class="cap">Настройки календаря</span><small></small></div>
+        <div class="card glass">
+          <div class="field">
+            <label for="gv">Цель дня, %</label><input type="number" id="gv" min="40" max="100" step="5" />
+          </div>
+          <div class="field">
+            <label for="wm">Неделя с понедельника</label
+            ><input type="checkbox" id="wm" style="width: 24px; height: 24px; accent-color: #151813" />
+          </div>
+        </div>
+        <p class="empty">
+          День засчитан, когда закрыто не меньше цели. Такие дни в календаре чёрные, остальные — зелёное
+          кольцо по проценту.
+        </p>
+        <div style="height: 20px"></div>
+      </section>
+
+      <!-- ── Настройки ───────────────────────────────────────────────────── -->
+      <section class="view" id="viewSetup" hidden>
+        <div id="setRoot">
+          <div class="sec-head" style="margin-top: 6px"><span class="cap">Настройки</span></div>
+          <button type="button" class="nav-row" data-go="day">
+            <span class="tile sun" style="font-size: 20px">🕰</span>
+            <span><b>Режим дня</b><small>подъём, обед, работа, отбой</small></span
+            ><span class="chev">›</span>
+          </button>
+          <button type="button" class="nav-row" data-go="sched">
+            <span class="tile sky" style="font-size: 20px">🎓</span>
+            <span><b>Расписание университета</b><small id="schedCount">—</small></span
+            ><span class="chev">›</span>
+          </button>
+          <button type="button" class="nav-row" data-go="hab">
+            <span class="tile mint" style="font-size: 20px">🌱</span>
+            <span><b>Привычки</b><small id="habCount">—</small></span
+            ><span class="chev">›</span>
+          </button>
+          <button type="button" class="nav-row" data-go="calfull">
+            <span class="tile sky" style="font-size: 20px">📅</span>
+            <span><b>Календарь</b><small>история дней, статистика, цель</small></span
+            ><span class="chev">›</span>
+          </button>
+          <button type="button" class="nav-row" data-go="notif">
+            <span class="tile lime" style="font-size: 20px">🔔</span>
+            <span><b>Напоминания</b><small id="notifSub">—</small></span
+            ><span class="chev">›</span>
+          </button>
+          <button type="button" class="nav-row" data-go="data">
+            <span class="tile rose" style="font-size: 20px">🧹</span>
+            <span><b>Данные</b><small>сброс дня и всего</small></span
+            ><span class="chev">›</span>
+          </button>
+        </div>
+
+        <div id="setSub" hidden>
+          <button type="button" class="back" id="setBack">‹ Настройки</button>
+          <div id="subBody"></div>
+          <div style="height: 30px"></div>
+        </div>
+      </section>
     </div>
-    <dialog class="sheet" id="modal" aria-label="Редактирование"></dialog>
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <noscript>
-      <p
-        style="
-          padding: 24px;
-          font:
-            17px/1.5 -apple-system,
-            system-ui,
-            sans-serif;
-        "
-      >
-        Kamron APP работает на JavaScript. Включите его в настройках браузера и обновите страницу.
-      </p>
-    </noscript>
+
+    <div class="composer" id="composer" hidden>
+      <input type="text" id="chatInput" placeholder="Спроси что-нибудь…" maxlength="200" />
+      <button type="button" id="chatSend" aria-label="Отправить">
+        <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+      </button>
+    </div>
+
+    <nav>
+      <button type="button" class="active" id="navToday" aria-label="Сегодня">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path
+            d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+          ></path>
+        </svg>
+      </button>
+      <button type="button" id="navChat" aria-label="Чат">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.3 8.3 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"
+          ></path>
+        </svg>
+      </button>
+      <button type="button" id="navSetup" aria-label="Настройки">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path
+            d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"
+          ></path>
+        </svg>
+      </button>
+    </nav>
+
     <script src="./app.js" defer></script>
   </body>
 </html>

@@ -5,8 +5,11 @@
  * (tools/build.mjs), поэтому после обновления старые файлы не остаются
  * у пользователя. Все кэши с префиксом kamron-app- и другой версией
  * удаляются при активации.
+ *
+ * Стратегия — сеть вперёд: опубликованные изменения доходят сразу,
+ * а кэш выручает только когда сети нет.
  */
-const CACHE = 'kamron-app-v0.22.0';
+const CACHE = 'kamron-app-v1.0.0';
 const PREFIX = 'kamron-app-';
 const ASSETS = [
   './',
@@ -47,30 +50,25 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
-
-  // Переход по адресу без сети открывает сохранённую страницу приложения.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put('./index.html', copy));
-          return response;
-        })
-        .catch(() => caches.match('./index.html').then(hit => hit || caches.match('./')))
-    );
-    return;
-  }
-
   event.respondWith(
     fetch(request)
       .then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(request, copy));
-        }
+        const copy = response.clone();
+        caches.open(CACHE).then(cache => cache.put(request, copy).catch(() => {}));
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() => caches.match(request).then(hit => hit || caches.match('./index.html')))
+  );
+});
+
+/** Тап по напоминанию открывает приложение, а не новую вкладку. */
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) if ('focus' in client) return client.focus();
+      if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+      return undefined;
+    })
   );
 });

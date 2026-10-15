@@ -1,284 +1,392 @@
 /**
- * Сквозная проверка приложения в настоящем браузере.
+ * Сквозная проверка Kamron APP в настоящем браузере.
  *
- * Проверяет то, что ломается молча: переходы по разделам, создание записей,
- * выгрузку файлов, импорт копии и работу с сервером Jarvis. Сервер
- * подменён заглушкой — тест проверяет приложение, а не модель.
+ * Время подменяется: только так можно проверить главное правило приложения —
+ * дело отмечается, пока идёт, и закрывается навсегда, когда прошло. Берём
+ * четверг 15 октября 2026, 18:00 по Ташкенту: часть дня уже упущена, одно
+ * дело идёт, вечерние ещё впереди.
  *
- * Запуск: npm test (нужен установленный браузер: npx playwright install chromium)
+ * Запуск: npm test (нужен браузер: npx playwright install chromium)
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { readFileSync } from 'node:fs';
-// playwright-core не тянет браузер за собой — он пригодится там, где браузер уже установлен
 const { chromium } = await import('playwright').catch(() => import('playwright-core'));
-import { stubServer, staticServer } from './stub-server.mjs';
+import { staticServer } from './stub-server.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const WEB = 8160;
-const API = 8161;
-const base = `http://127.0.0.1:${WEB}/index.html`;
+const PORT = 8170;
+const base = `http://127.0.0.1:${PORT}/index.html`;
 
-const web = await staticServer(root, WEB);
-const api = await stubServer(API);
+const web = await staticServer(root, PORT);
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: ['--no-sandbox']
 });
-const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+
+const fails = [];
+const errors = [];
+let passed = 0;
+const ok = (name, condition) => {
+  if (condition) {
+    passed++;
+    console.log('  ✓ ' + name);
+  } else {
+    fails.push(name);
+    console.log('  ✗ ' + name);
+  }
+};
+const part = name => console.log('\n' + name);
+
+/** Замораживает часы страницы на заданном моменте. */
+function freeze(iso) {
+  return `(() => {
+    const F = new Date('${iso}').getTime();
+    const R = Date;
+    class FD extends R { constructor(...a) { a.length ? super(...a) : super(F); } static now() { return F; } }
+    window.Date = FD;
+  })()`;
+}
+
+const context = await browser.newContext({
+  viewport: { width: 393, height: 852 },
+  timezoneId: 'Asia/Tashkent'
+});
+await context.addInitScript(freeze('2026-10-15T13:00:00Z')); // 18:00 Ташкент
 const page = await context.newPage();
 page.setDefaultTimeout(5000);
-
-const errors = [];
-const downloads = [];
-page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
 page.on('console', m => {
-  // 401 приходит намеренно в проверке неверного ключа
-  if (m.type() === 'error' && !/401/.test(m.text())) errors.push(m.text());
+  if (m.type() === 'error' && !/favicon|fonts\.googleapis|TUNNEL/.test(m.text()))
+    errors.push('CONSOLE ' + m.text());
 });
-page.on('download', d => downloads.push(d.suggestedFilename()));
-page.on('dialog', d => d.accept());
-
-let failed = 0;
-const step = async (name, fn) => {
-  try {
-    await fn();
-    console.log('  ok    ' + name);
-  } catch (e) {
-    failed++;
-    console.log('  FAIL  ' + name + ' — ' + String(e.message).split('\n').slice(0, 2).join(' ~ '));
-  }
-};
-/** Перезагрузка обязательна: смена одного хэша не перезапускает приложение. */
-const go = async hash => {
-  await page.goto(base + hash);
-  await page.reload();
-  await page.waitForTimeout(250);
-};
-const save = () => page.click('#modal .primary-btn');
 
 await page.goto(base);
+await page.waitForTimeout(700);
+
+part('Экран дня');
+ok('шапка показывает сегодняшнюю дату', (await page.textContent('#dayLabel')).includes('15 окт'));
+const counts = await page.evaluate(() => ({
+  rows: document.querySelectorAll('#list .row').length,
+  missed: document.querySelectorAll('#list .row.missed').length,
+  early: document.querySelectorAll('#list .row.early').length,
+  live: document.querySelectorAll('#list .row.live').length,
+  auto: document.querySelectorAll('#list .mark.auto').length,
+  tap: document.querySelectorAll('#list .row.tap').length
+}));
+ok('план дня собран', counts.rows > 10);
+ok('прошедшие без отметки помечены упущенными', counts.missed >= 3);
+ok('будущие дела заблокированы', counts.early >= 2);
+ok('ровно одно дело идёт сейчас', counts.live === 1);
+ok('у дороги и окон пассивная метка', counts.auto >= 3);
+ok('нажимаются только дела', counts.tap === counts.rows - counts.auto);
+ok(
+  'питомец недоволен потерями',
+  ['worry', 'cross', 'angry', 'furious'].includes(await page.getAttribute('#pet', 'data-mood'))
+);
+ok('есть объяснение «почему»', await page.isVisible('#why'));
+await page.click('#why');
+await page.waitForTimeout(400);
+ok('объяснение раскрывается', await page.isVisible('#whyText'));
+ok(
+  'в объяснении названа причина',
+  (await page.textContent('#whyText')).includes('Мимо прошли') ||
+    (await page.textContent('#whyText')).includes('отметка')
+);
+
+part('Честное время');
+await page.evaluate(() => document.querySelector('#list .row.missed').click());
+await page.waitForTimeout(300);
+ok(
+  'упущенное нельзя отметить',
+  await page.evaluate(() => !document.querySelector('#list .row.missed').classList.contains('on'))
+);
+ok('отказ объяснён', await page.isVisible('.toast'));
+await page.waitForTimeout(2800);
+await page.evaluate(() => document.querySelector('#list .row.early').click());
+await page.waitForTimeout(300);
+ok(
+  'будущее нельзя отметить заранее',
+  await page.evaluate(() => !document.querySelector('#list .row.early').classList.contains('on'))
+);
+await page.waitForTimeout(2800);
+
+part('Отметка и прогресс');
+const pctBefore = Number(await page.textContent('#pct'));
+await page.evaluate(() => document.querySelector('#list .row.live').click());
+await page.waitForTimeout(900);
+ok(
+  'текущее дело отмечается нажатием на всю строку',
+  await page.evaluate(() => document.querySelector('#list .row.live').classList.contains('on'))
+);
+ok('процент вырос', Number(await page.textContent('#pct')) > pctBefore);
+ok('питомец радуется отметке', (await page.getAttribute('#pet', 'data-mood')) === 'cheer');
+ok(
+  'три привычки на главном экране',
+  (await page.evaluate(() => document.querySelectorAll('#habTop .hab').length)) === 3
+);
+await page.evaluate(() => document.querySelector('#habTop .plus').click());
+await page.waitForTimeout(400);
+ok(
+  'привычка считается по нажатию',
+  await page.evaluate(() => /1\//.test(document.querySelector('#habTop .hab b').textContent))
+);
+
+part('Фокус-режим');
+await page.waitForTimeout(2400);
+await page.evaluate(() => document.querySelector('#list .row.live').click()); // снять отметку
+await page.waitForTimeout(500);
+ok(
+  'кнопка фокуса появляется для текущего дела',
+  await page.evaluate(() => !document.getElementById('focusBtn').hidden)
+);
+await page.click('#focusBtn');
+await page.waitForTimeout(600);
+ok('фокус открылся', await page.isVisible('#focusLayer'));
+ok('таймер идёт', /\d+:\d\d/.test(await page.textContent('#fTime')));
+ok('питомец переехал в фокус', await page.evaluate(() => !!document.querySelector('#petSlot #pet')));
+ok(
+  'нижнее меню спрятано',
+  await page.evaluate(() => getComputedStyle(document.querySelector('nav')).display === 'none')
+);
+await page.click('#fDone');
+await page.waitForTimeout(700);
+ok(
+  'после фокуса дело закрыто',
+  await page.evaluate(() => document.querySelector('#list .row.live').classList.contains('on'))
+);
+ok('питомец вернулся на место', await page.evaluate(() => !!document.querySelector('#viewToday > #pet')));
+ok(
+  'время фокуса записано',
+  await page.evaluate(
+    () => Object.keys(JSON.parse(localStorage.getItem('den-kamrona-v3')).focus).length === 1
+  )
+);
+
+part('Задачи');
+await page.click('#addTask');
+await page.waitForTimeout(450);
+await page.fill('#nTitle', 'Презентация');
+await page.evaluate(() =>
+  [...document.querySelectorAll('.pick')].find(x => x.textContent === 'завтра').click()
+);
+await page.fill('#nTime', '20:00');
+await page.click('#nSave');
+await page.waitForTimeout(700);
+ok('после добавления открыт нужный день', (await page.textContent('#dayLabel')).includes('16 окт'));
+ok(
+  'задача встала в план',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#list .meat b')].some(b => b.textContent.includes('Презентация'))
+  )
+);
+ok(
+  'задача будущего дня заблокирована',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#list .row')]
+      .find(r => r.textContent.includes('Презентация'))
+      .classList.contains('early')
+  )
+);
+await page.click('#navToday');
+await page.waitForTimeout(500);
+
+part('Календарь и выводы');
+await page.click('#navSetup');
+await page.waitForTimeout(350);
+await page.click('[data-go="calfull"]');
+await page.waitForTimeout(700);
+ok('календарь открывается из настроек', await page.isVisible('#calGrid'));
+ok(
+  'у каждого дня есть кольцо',
+  (await page.evaluate(() => document.querySelectorAll('.cal-cell .ring').length)) === 42
+);
+ok(
+  'выводы по данным отрисованы',
+  (await page.evaluate(() => document.querySelectorAll('#insights .insight').length)) >= 1
+);
+await page.click('#calPrev');
+await page.waitForTimeout(400);
+ok('месяц листается назад', (await page.textContent('#calTitle')).includes('сентябрь'));
+await page.click('#calNext');
 await page.waitForTimeout(400);
 
-console.log('\nРазделы и ярлыки');
-await step('ярлык #routine открывает режим дня', async () => {
-  await go('#routine');
-  if (!/Режим дня|Мой день/i.test(await page.textContent('#page'))) throw new Error('не тот экран');
+part('Расписание');
+await page.click('#calBack');
+await page.waitForTimeout(400);
+await page.click('[data-go="sched"]');
+await page.waitForTimeout(500);
+const pairs = await page.evaluate(() => document.querySelectorAll('#pairs .card').length);
+await page.click('#addPair');
+await page.waitForTimeout(400);
+ok(
+  'пара добавляется',
+  (await page.evaluate(() => document.querySelectorAll('#pairs .card').length)) === pairs + 1
+);
+await page.evaluate(() => {
+  const inputs = document.querySelectorAll('#pairs .card .n');
+  const last = inputs[inputs.length - 1];
+  last.value = 'Тестовая пара';
+  last.dispatchEvent(new Event('change'));
 });
-await step('адрес запоминает открытый раздел', async () => {
-  await go('#notes');
-  await page.goto(base);
-  await page.click('[data-action="go"][data-page="more"]');
-  await page.waitForTimeout(100);
-  await page.click('[data-action="go"][data-page="notes"]');
-  await page.waitForTimeout(200);
-  if (!page.url().endsWith('#notes')) throw new Error('адрес: ' + page.url());
-});
+await page.waitForTimeout(300);
+await page.click('#navToday');
+await page.waitForTimeout(600);
+ok(
+  'изменённое расписание попадает в план дня',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#list .meat b')].some(b => b.textContent.includes('Тестовая пара'))
+  )
+);
+ok(
+  'отметки переживают правку расписания',
+  (await page.evaluate(() => document.querySelectorAll('#list .row.on').length)) >= 1
+);
 
-console.log('\nСоздание записей');
-await step('предмет с днями и временем', async () => {
-  await go('#uni');
-  await page.click('[data-action="new-subject"]');
-  await page.waitForTimeout(250);
-  await page.fill('#modal input[name="name"]', 'Международные отношения');
-  await page.fill('#modal input[name="time"]', '09:00');
-  await page.fill('#modal input[name="teacher"]', 'Петров А.');
-  await page.evaluate(() => {
-    const days = document.querySelectorAll('#modal input[name="days"]');
-    [1, 3].forEach(i => {
-      days[i].checked = true;
-      days[i].dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  });
-  await save();
-  await page.waitForTimeout(400);
-  if (!/Международные отношения/.test(await page.textContent('#page'))) throw new Error('предмет не создан');
-});
-await step('задание по предмету', async () => {
-  await go('#uni');
-  await page.click('[data-action="quick-uni-task"]');
-  await page.waitForTimeout(300);
-  await page.fill('#modal input[name="title"]', 'Эссе по теории режимов');
-  await save();
-  await page.waitForTimeout(400);
-  if (!/Эссе по теории/.test(await page.textContent('#page'))) throw new Error('задание не видно');
-});
-await step('проект', async () => {
-  await go('#work');
-  await page.click('[data-action="new-project"]');
-  await page.waitForTimeout(250);
-  await page.fill('#modal input[name="name"]', 'Kamron APP');
-  await save();
-  await page.waitForTimeout(350);
-  if (!/Kamron APP/.test(await page.textContent('#page'))) throw new Error('проект не создан');
-});
-await step('заметка', async () => {
-  await go('#notes');
-  await page.click('[data-action="new-note"]');
-  await page.waitForTimeout(250);
-  await page.fill('#modal input[name="title"]', 'Идея');
-  await page.fill('#modal textarea[name="body"]', 'Проверить расписание на вторник');
-  await save();
-  await page.waitForTimeout(350);
-  if (!/Идея/.test(await page.textContent('#page'))) throw new Error('заметка не создана');
-});
-await step('личная задача', async () => {
-  await go('#tasks');
-  await page.click('[data-action="new-task-hub"]').catch(() => {});
-  await page.waitForTimeout(300);
-  const personal = page
-    .locator('[data-action="choose-task-kind"][data-kind="personal"], [data-action="new-personal-task"]')
-    .first();
-  if (await personal.count()) {
-    await personal.click();
-    await page.waitForTimeout(300);
-  }
-  await page.fill('#modal input[name="title"]', 'Купить тетради');
-  await save();
-  await page.waitForTimeout(350);
-  if (!/Купить тетради/.test(await page.textContent('#page'))) throw new Error('задача не создана');
-});
+part('Напоминания');
+await page.click('#navSetup');
+await page.waitForTimeout(300);
+await page.click('[data-go="notif"]');
+await page.waitForTimeout(400);
+ok('экран напоминаний открывается', await page.isVisible('#nOn'));
+await page.evaluate(() => document.getElementById('nOn').click());
+await page.waitForTimeout(300);
+ok(
+  'переключатель сохраняется',
+  await page.evaluate(() => JSON.parse(localStorage.getItem('den-kamrona-v3')).notif.on === true)
+);
+await page.click('#nTest');
+await page.waitForTimeout(400);
+ok('без разрешения показан запасной способ', await page.isVisible('.toast'));
+await page.waitForTimeout(2800);
 
-console.log('\nВыгрузка и перенос данных');
-await step('расписание выгружается в .ics', async () => {
-  await go('#uni');
-  await page.click('[data-action="export-calendar"]');
-  await page.waitForTimeout(600);
-  if (!downloads.some(f => /\.ics$/.test(f))) throw new Error('файлы: ' + downloads.join(', '));
+part('Чат');
+await page.click('#navChat');
+await page.waitForTimeout(400);
+await page.click('.chip');
+await page.waitForTimeout(900);
+ok(
+  'помощник отвечает',
+  (await page.evaluate(() => document.querySelectorAll('#thread .msg.ai').length)) === 1
+);
+await page.evaluate(() => {
+  document.getElementById('chatInput').value = 'что осталось?';
+  document.getElementById('chatSend').click();
 });
-await step('копия данных сохраняется в .json', async () => {
-  await go('#settings');
-  await page.click('[data-action="toggle-settings-more"]');
-  await page.waitForTimeout(200);
-  await page.click('[data-action="export"]');
-  await page.waitForTimeout(600);
-  if (!downloads.some(f => /\.json$/.test(f))) throw new Error('файлы: ' + downloads.join(', '));
-});
-await step('импорт копии возвращает все записи', async () => {
-  await go('#settings');
-  await page.click('[data-action="toggle-settings-more"]');
-  await page.waitForTimeout(200);
-  const [file] = await Promise.all([page.waitForEvent('download'), page.click('[data-action="export"]')]);
-  const path = '/tmp/kamron-backup.json';
-  await file.saveAs(path);
-  const before = JSON.parse(readFileSync(path, 'utf8'));
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await page.waitForTimeout(300);
-  await go('#settings');
-  await page.click('[data-action="toggle-settings-more"]');
-  await page.waitForTimeout(200);
-  const [chooser] = await Promise.all([
-    page.waitForEvent('filechooser'),
-    page.click('[data-action="import"]')
-  ]);
-  await chooser.setFiles(path);
-  await page.waitForTimeout(700);
-  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('kamron-app-mvp-v1') || 'null'));
-  if (!after) throw new Error('после импорта данных нет');
-  const lost = ['projects', 'subjects', 'notes', 'personalTasks'].filter(
-    k => (after[k] || []).length !== (before[k] || []).length
-  );
-  if (lost.length) throw new Error('потеряно: ' + lost.join(', '));
-});
+await page.waitForTimeout(900);
+await page.click('#toHist');
+await page.waitForTimeout(500);
+ok(
+  'история хранит оба разговора',
+  (await page.evaluate(() => document.querySelectorAll('#histBody .hist').length)) === 2
+);
+await page.evaluate(() => document.querySelector('.hist .p').click());
+await page.waitForTimeout(400);
+ok(
+  'закрепление работает',
+  await page.evaluate(() => JSON.parse(localStorage.getItem('den-kamrona-v3')).chat.some(c => c.pin))
+);
+await page.evaluate(() =>
+  [...document.querySelectorAll('.pick')].find(x => x.textContent === 'Архив').click()
+);
+await page.waitForTimeout(300);
+ok('архив пуст', await page.evaluate(() => !!document.querySelector('#histBody .empty')));
+await page.evaluate(() => [...document.querySelectorAll('.pick')].find(x => x.textContent === 'Все').click());
+await page.waitForTimeout(300);
+await page.evaluate(() => document.querySelector('.hist .x').click());
+await page.waitForTimeout(300);
+ok(
+  'удаление убирает одну запись',
+  (await page.evaluate(() => document.querySelectorAll('#histBody .hist').length)) === 1
+);
 
-console.log('\nСервер Jarvis');
-await step('без сервера диалог предлагает подключение', async () => {
-  await go('#chat');
-  if (!/Сервер не подключён/.test(await page.textContent('#page'))) throw new Error('нет подсказки');
+part('Сохранение и PWA');
+await page.reload();
+await page.waitForTimeout(900);
+ok(
+  'состояние переживает перезагрузку',
+  (await page.evaluate(() => document.querySelectorAll('#list .row.on').length)) >= 1
+);
+ok('адрес помнит вкладку', (await page.evaluate(() => location.hash)) === '#chat');
+ok(
+  'service worker зарегистрирован',
+  await page.evaluate(() => navigator.serviceWorker.getRegistrations().then(r => r.length > 0))
+);
+const manifest = await page.evaluate(async () => {
+  const r = await fetch('./manifest.webmanifest');
+  return r.ok ? (await r.json()).name : null;
 });
-await step('проверка связи с сервером', async () => {
-  await page.click('[data-action="server-form"]');
-  await page.waitForTimeout(250);
-  await page.fill('#modal input[name="url"]', `http://localhost:${API}`);
-  await page.fill('#modal input[name="token"]', 'secret-key');
-  await page.click('[data-action="server-check"]');
-  await page.waitForTimeout(500);
-  if (!/Связь есть/.test(await page.textContent('#server-status')))
-    throw new Error(await page.textContent('#server-status'));
-});
-await step('подключение сохраняется', async () => {
-  await save();
-  await page.waitForTimeout(300);
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('kamron-app-mvp-v1')).server);
-  if (stored.token !== 'secret-key') throw new Error(JSON.stringify(stored));
-});
-await step('диалог отвечает и видит снимок дня', async () => {
-  await go('#chat');
-  await page.fill('.chat-composer textarea', 'Что сегодня?');
-  await page.click('.chat-send');
-  await page.waitForTimeout(800);
-  const text = await page.textContent('#chat-stream');
-  if (!/Вижу \d+ пунктов режима/.test(text)) throw new Error(text.slice(0, 120));
-  if (!/Что сегодня\?/.test(text)) throw new Error('своё сообщение не показано');
-});
-await step('очистка разговора', async () => {
-  await page.click('[data-action="chat-clear"]');
-  await page.waitForTimeout(250);
-  if (!/Спросите что угодно/.test(await page.textContent('#chat-stream')))
-    throw new Error('лента не очищена');
-});
-await step('ошибка сервера показана, вопрос возвращается в поле', async () => {
-  await page.evaluate(() => {
-    const d = JSON.parse(localStorage.getItem('kamron-app-mvp-v1'));
-    d.server.token = 'wrong';
-    localStorage.setItem('kamron-app-mvp-v1', JSON.stringify(d));
-  });
-  await page.reload();
-  await page.waitForTimeout(300);
-  await page.fill('.chat-composer textarea', 'Проверка ошибки');
-  await page.click('.chat-send');
-  await page.waitForTimeout(700);
-  if (!/Неверный ключ доступа/.test(await page.textContent('#page'))) throw new Error('ошибка не показана');
-  if ((await page.inputValue('.chat-composer textarea')) !== 'Проверка ошибки')
-    throw new Error('вопрос потерян');
-  await page.evaluate(() => {
-    const d = JSON.parse(localStorage.getItem('kamron-app-mvp-v1'));
-    d.server.token = 'secret-key';
-    localStorage.setItem('kamron-app-mvp-v1', JSON.stringify(d));
-  });
-});
+ok('манифест отдаётся', manifest === 'Kamron APP — мой день');
+await page.goto(base + '#cal');
+await page.waitForTimeout(700);
+ok('ярлык открывает нужный раздел', await page.isVisible('#calGrid'));
 
-console.log('\nПодготовка к семинару');
-await step('тема, ответ и разбор от Jarvis', async () => {
-  await go('#uni');
-  await page.locator('[data-action="open-subject"]').first().click();
-  await page.waitForTimeout(300);
-  await page.locator('[data-action="open-seminar"]').first().click();
-  await page.waitForTimeout(300);
-  await page.locator('[data-action="new-seminar-prep"]').first().click();
-  await page.waitForTimeout(250);
-  await page.fill('#modal input[name="topic"]', 'Теория международных режимов');
-  await save();
-  await page.waitForTimeout(400);
-  await page
-    .locator('[data-prep-answer]')
-    .first()
-    .fill('Режимы — это нормы и правила, вокруг которых сходятся ожидания государств.');
-  await page.waitForTimeout(400);
-  await page.locator('[data-action="prep-review"]').first().click();
-  await page.waitForTimeout(900);
-  if (!/Разбор ответов/.test(await page.textContent('.prep-review'))) throw new Error('разбор не пришёл');
-});
-await step('пакет подготовки скачивается с читаемым именем', async () => {
-  await page.click('[data-action="export-prep"]');
-  await page.waitForTimeout(700);
-  // Имя с кириллицей браузер отбрасывает — проверяем, что осталась латиница и расширение
-  if (!downloads.some(f => /^seminar-[a-z0-9-]+\.md$/.test(f)))
-    throw new Error('файлы: ' + downloads.join(', '));
-});
+part('Вечер');
+const night = await context.newPage();
+night.on('pageerror', e => errors.push('PAGEERROR(вечер) ' + e.message));
+await night.addInitScript(freeze('2026-10-15T17:00:00Z')); // 22:00 Ташкент
+await night.goto(base);
+await night.waitForTimeout(800);
+ok('вечером предлагается разбор дня', await night.evaluate(() => !document.getElementById('revCall').hidden));
+await night.click('#revCall');
+await night.waitForTimeout(600);
+ok(
+  'разбор перечисляет упущенное',
+  (await night.evaluate(() => document.querySelectorAll('.rev').length)) > 0
+);
+await night.evaluate(() => document.querySelector('.rev .why3 button').click());
+await night.waitForTimeout(300);
+ok(
+  'причина сохраняется',
+  await night.evaluate(() => {
+    const r = JSON.parse(localStorage.getItem('den-kamrona-v3')).review;
+    return Object.values(r).some(d => Object.values(d).includes('late'));
+  })
+);
+await night.click('#revDone');
+await night.waitForTimeout(600);
+ok(
+  'закрытый разбор больше не навязывается',
+  await night.evaluate(() => document.getElementById('revCall').hidden)
+);
 
-console.log('\nИгры');
-await step('поле «Блоков» 8x8 и партия сохраняется', async () => {
-  await go('#games');
-  const cells = await page.locator('.block-cell').count();
-  if (cells !== 64) throw new Error('клеток: ' + cells);
+part('Новый пользователь');
+const fresh = await browser.newContext({
+  viewport: { width: 393, height: 852 },
+  timezoneId: 'Asia/Tashkent'
 });
+await fresh.addInitScript(freeze('2026-10-18T04:00:00Z')); // воскресенье, 09:00 — пар нет
+const clean = await fresh.newPage();
+clean.on('pageerror', e => errors.push('PAGEERROR(новый) ' + e.message));
+await clean.goto(base);
+await clean.waitForTimeout(800);
+ok(
+  'выходной собирается без ошибок',
+  (await clean.evaluate(() => document.querySelectorAll('#list .row').length)) >= 2
+);
+ok(
+  'на пустых данных выводы не падают',
+  await clean.evaluate(() => {
+    document.getElementById('navSetup').click();
+    return true;
+  })
+);
+await clean.waitForTimeout(300);
+await clean.click('[data-go="calfull"]');
+await clean.waitForTimeout(600);
+ok(
+  'календарь работает без истории',
+  (await clean.evaluate(() => document.querySelectorAll('#insights .insight').length)) >= 1
+);
+ok('средний процент не выдумывается', (await clean.textContent('#stAvg')) === '—');
 
-console.log('\nОшибки в консоли:', errors.length ? errors : 'нет');
-console.log(failed || errors.length ? `\nПРОВАЛЕНО: ${failed} проверок` : '\nВсе проверки пройдены.');
+console.log('\n' + '─'.repeat(46));
+if (errors.length) {
+  console.log('Ошибки в консоли:');
+  errors.forEach(e => console.log('  ' + e));
+}
+console.log(`Проверок пройдено: ${passed}, провалено: ${fails.length}`);
+if (fails.length) fails.forEach(f => console.log('  ✗ ' + f));
 
 await browser.close();
 web.close();
-api.close();
-process.exit(failed || errors.length ? 1 : 0);
+process.exit(fails.length || errors.length ? 1 : 0);
