@@ -452,67 +452,69 @@
   function think(t) {
     var day = t.day, nowMin = t.nowMin, future = t.dk > t.nk, past = t.dk < t.nk;
     var dd = fromKey(t.dk);
-    if (future) return { mood: 'calm', text: 'План на <b>' + dd.getDate() + ' ' + MONTHS[dd.getMonth()] + '</b>. Пока только смотрим.',
-      why: 'Это будущий день. Отмечать дела можно только в тот день, когда они идут.' };
+    if (future) return { mood: 'calm',
+      text: 'План на <b>' + dd.getDate() + ' ' + MONTHS[dd.getMonth()] + '</b>. Пока только смотрим.',
+      why: 'Это будущий день. Отмечать можно только в сам день.' };
     if (past) return { mood: t.pct >= S.goal ? 'proud' : t.pct >= 40 ? 'calm' : 'sad',
       text: 'Тот день закрыт на <b>' + t.pct + '%</b>' + (t.miss ? ', упущено ' + t.miss : '') + '.',
-      why: 'День уже прошёл, менять в нём нечего. Он остаётся в календаре как есть.' };
+      why: 'День прошёл, менять в нём нечего.' };
 
     var wake = toMin(S.cfg.wake), sleep = toMin(S.cfg.sleep);
     if (nowMin < wake - 30 || nowMin >= sleep)
       return { mood: 'sleep', text: 'Спим. Подъём в <b>' + S.cfg.wake + '</b>.',
-        why: 'Сейчас время сна по твоему режиму. Я тоже сплю — разбужу утром.' };
+        why: 'Сон по твоему режиму. Разбужу утром.' };
     if (t.pct >= 100)
       return { mood: 'proud', text: 'Весь день закрыт. Иди отдыхать — ты заслужил.',
-        why: 'Закрыто ' + t.hit + ' из ' + t.units + ' — всё, что было на сегодня, включая привычки.' };
+        why: 'Закрыто ' + t.hit + ' из ' + t.units + ', вместе с привычками.' };
 
     var live = day.find(function (b) { return !b.free && nowMin >= b.from && nowMin < b.to; });
     var next = day.find(function (b) { return !b.free && b.from > nowMin; });
     var missed = day.filter(function (b) { return isCheckable(b) && statusOf(b, t.dk, t.nk, nowMin) === 'missed'; });
-    var names = missed.map(function (b) { return b.name + ' (' + toHm(b.from) + ')'; }).join(', ');
-    var orders = live ? live.name : next ? next.name + ' в ' + toHm(next.from) : 'ближайшее дело';
-    var rule = 'Дело отмечается, только пока оно идёт, плюс ' + GRACE + ' минут запаса. Потом оно закрывается навсегда — иначе день можно было бы «досдать» вечером, и смысл режима пропал бы.';
+    /* Список держим коротким: три названия читаются, восемь — уже нет. */
+    var names = missed.slice(-3).map(function (b) { return b.name; }).join(', ') +
+      (missed.length > 3 ? ' и ещё ' + (missed.length - 3) : '');
+    var now = live ? live.name : next ? next.name + ' в ' + toHm(next.from) : 'пауза';
 
     if (live && isCheckable(live) && t.m.indexOf(live.id) < 0 && live.to - nowMin <= 15)
       return { mood: 'hurry', text: '<b>' + live.name + '</b> кончается через ' + human(live.to - nowMin) + '. Закрывай сейчас.',
-        why: 'Дело идёт до ' + toHm(live.to) + '. Отметить его можно до ' + toHm(live.to + GRACE) + ' — дальше оно станет упущенным.' };
+        why: 'Отметить можно до <b>' + toHm(live.to + GRACE) + '</b>.' };
 
     if (missed.length >= 5)
       return { mood: 'furious', text: 'Я в бешенстве: за день потеряно <b>' + missed.length + '</b> ' + plural(missed.length, 'дело', 'дела', 'дел') + '.',
-        why: 'Мимо прошли: ' + names + '. ' + rule + ' Сделай прямо сейчас: <b>' + orders + '</b>.' };
+        why: 'Мимо: ' + names + '.<br>Сейчас: <b>' + now + '</b>.' };
     if (missed.length >= 3)
       return { mood: 'angry', text: 'Я злюсь: мимо прошли <b>' + missed.length + '</b> ' + plural(missed.length, 'дело', 'дела', 'дел') + '.',
-        why: 'Это ' + names + '. ' + rule + ' Остальное ещё твоё — начни с <b>' + orders + '</b>.' };
+        why: 'Мимо: ' + names + '.<br>Сейчас: <b>' + now + '</b>.' };
     if (missed.length === 2)
       return { mood: 'cross', text: 'Я недоволен: упущено два дела — <b>' + missed[0].name + '</b> и <b>' + missed[1].name + '</b>.',
-        why: rule + ' Третье терять не стоит: сейчас <b>' + orders + '</b>.' };
+        why: 'Отметка работает, только пока дело идёт.<br>Сейчас: <b>' + now + '</b>.' };
     if (missed.length === 1)
       return { mood: 'worry', text: 'Я насторожился: <b>' + missed[0].name + '</b> ушло без отметки.',
-        why: 'Оно шло до ' + toHm(missed[0].to) + ', отметка была возможна до ' + toHm(missed[0].to + GRACE) + '. ' + rule + ' Дальше: <b>' + orders + '</b>.' };
+        why: 'Оно закрылось в ' + toHm(missed[0].to + GRACE) + '.<br>Дальше: <b>' + now + '</b>.' };
 
     if (nowMin < wake + 20)
       return { mood: 'wake', text: 'Подъём. Завтрак до <b>' + toHm(wake + 20) + '</b>, выход в ' + S.cfg.leave + '.',
-        why: 'Утро задаёт весь день: опоздаешь на 20 минут здесь — потеряешь час вечером.' };
+        why: 'Опоздаешь на двадцать минут утром — потеряешь час вечером.' };
     if (nowMin > 1320)
       return { mood: 'tired', text: 'Поздно. Осталось: ' + (next ? next.name.toLowerCase() : 'ничего') + '. Отбой в <b>' + S.cfg.sleep + '</b>.',
-        why: 'До отбоя ' + human(sleep - nowMin) + '. Если сдвинешь сон, завтра подъём в ' + S.cfg.wake + ' будет тяжёлым.' };
+        why: 'До отбоя ' + human(sleep - nowMin) + '. Сдвинешь сон — завтра тяжело.' };
 
     if (live && (live.kind === 'window' || live.kind === 'free'))
       return { mood: 'bored', text: 'Окно до <b>' + toHm(live.to) + '</b>. Сделай уроки сейчас — вечером их не будет.',
-        why: 'Свободного времени здесь ' + human(live.to - nowMin) + '. Вечером у тебя ужин, душ и уроки подряд — именно там ты обычно не успеваешь.' };
+        why: 'Свободно ' + human(live.to - nowMin) + '. Вечером ужин, душ и уроки подряд.' };
 
     if (live && isCheckable(live))
       return { mood: 'focus', text: 'Сейчас <b>' + live.name + '</b>. До ' + toHm(live.to) + '. Не отвлекайся.',
-        why: 'Отметить это дело можно до ' + toHm(live.to + GRACE) + '. Дальше — ' + (next ? next.name + ' в ' + toHm(next.from) : 'свободно') + '.' };
+        why: 'Отметить можно до ' + toHm(live.to + GRACE) + '.<br>Дальше: <b>' + (next ? next.name : 'свободно') + '</b>.' };
 
     if (t.pct >= 55)
       return { mood: 'happy', text: 'Сделано ' + t.pct + '%. Дальше — <b>' + (next ? next.name : 'свободно') + '</b>' + (next ? ' в ' + toHm(next.from) : '') + '.',
-        why: 'Закрыто ' + t.hit + ' из ' + t.units + ', потерь нет. Такой день идёт в календарь как взятая цель.' };
+        why: 'Закрыто ' + t.hit + ' из ' + t.units + ', потерь нет.' };
     if (live)
       return { mood: 'calm', text: 'Сейчас ' + live.name.toLowerCase() + ', до ' + toHm(live.to) + '. Дальше <b>' + (next ? next.name : '—') + '</b>.',
-        why: 'Пока всё по плану, терять нечего.' };
+        why: 'Пока всё по плану.' };
     return { mood: 'calm', text: next ? 'Ближайшее — <b>' + next.name + '</b> в ' + toHm(next.from) + '.' : 'На сегодня всё.',
-      why: next ? 'До него ' + human(next.from - nowMin) + '. Можно закрыть привычки.' : 'Больше дел в плане нет.' };
+      why: next ? 'До него ' + human(next.from - nowMin) + '. Можно закрыть привычки.' : 'Дел в плане больше нет.' };
   }
 
   /* ── Экран «Сегодня» ──────────────────────────────────────────────── */
@@ -528,9 +530,7 @@
       var th = think(t);
       Pet.apply(th.mood);
       say(th.text);
-      whyNow = (th.why || '') + '<br><br>Мой уровень: <b>' + L.stage.name + '</b>' +
-        (L.next ? ' — до «' + L.next.name + '» осталось закрыть ' + L.toNext + ' ' + plural(L.toNext, 'день', 'дня', 'дней') + ' на ' + S.goal + '%.' : ' — выше некуда.') +
-        (L.weak ? ' Я ослаб: три дня подряд ниже 40%.' : '');
+      whyNow = th.why || '';
       el.why.hidden = !whyNow;
       if (whyOpen && whyNow) el.whyText.innerHTML = whyNow;
       el.whyText.hidden = !(whyOpen && whyNow);
@@ -700,10 +700,23 @@
     row.className = 'hab glass' + (n >= h.times ? ' full' : '');
     var dots = '';
     for (var i = 0; i < h.times; i++) dots += '<span class="' + (i < n ? 'fill' : '') + '"></span>';
-    row.innerHTML = '<span class="tile mint"></span><div class="meat"><b></b><div class="dots">' + dots + '</div></div>' +
+    row.innerHTML =
+      (withDel
+        ? '<input type="text" class="tile mint ico" maxlength="4" aria-label="Значок привычки">'
+        : '<span class="tile mint"></span>') +
+      '<div class="meat"><b></b><div class="dots">' + dots + '</div></div>' +
       (withDel ? '<button type="button" class="del" aria-label="Удалить">✕</button>' : '') +
       '<button type="button" class="plus" aria-label="Отметить">+</button>';
-    row.querySelector('.tile').textContent = h.icon || '🌱';
+    var tile = row.querySelector('.tile');
+    if (withDel) {
+      /* В настройках значок просто перепечатывается — своей клавиатурой эмодзи. */
+      tile.value = h.icon || '🌱';
+      tile.addEventListener('change', function () {
+        h.icon = (tile.value || '🌱').slice(0, 4);
+        save();
+        renderSub('hab');
+      });
+    } else tile.textContent = h.icon || '🌱';
     row.querySelector('b').textContent = h.title + ' · ' + n + '/' + h.times;
     row.querySelector('.plus').addEventListener('click', function () {
       if (dk !== dateKey(new Date())) { toast('Привычки отмечаются только сегодня.'); return; }
@@ -1006,7 +1019,14 @@
   }
   function renderInsights() {
     el.insights.innerHTML = '';
-    insights().forEach(function (x, i) {
+    var L = petLevel();
+    var level = {
+      b: 'Питомец: ' + L.stage.name + (L.stage.crest ? ' ' + L.stage.crest : ''),
+      s: (L.next
+        ? 'До «' + L.next.name + '» — ещё ' + L.toNext + ' ' + plural(L.toNext, 'день', 'дня', 'дней') + ' на ' + S.goal + '%.'
+        : 'Выше уровня нет.') + (L.weak ? ' Сейчас ослаб: три дня подряд ниже 40%.' : '')
+    };
+    [level].concat(insights()).forEach(function (x, i) {
       var c = document.createElement('div');
       c.className = 'insight glass'; c.style.animationDelay = (i * 70) + 'ms';
       c.innerHTML = '<b></b><small></small>';
@@ -1132,7 +1152,8 @@
     }
     if (name === 'hab') {
       b.innerHTML = '<div class="sec-head"><span class="cap">Привычки</span><small>цифра — раз в день</small></div><div class="list" id="hl"></div>' +
-        '<div class="adder"><input type="text" id="hNew" placeholder="Новая привычка" maxlength="40">' +
+        '<div class="adder"><input type="text" id="hIco" class="tile mint ico" maxlength="4" value="🌱" aria-label="Значок">' +
+        '<input type="text" id="hNew" placeholder="Новая привычка" maxlength="40">' +
         '<input type="number" id="hN" min="1" max="12" value="1"><button type="button" id="hAdd">+</button></div>' +
         '<p class="empty">Первые три видны на главном экране.</p>';
       var list = b.querySelector('#hl'), dk = dateKey(new Date());
@@ -1141,7 +1162,8 @@
       b.querySelector('#hAdd').addEventListener('click', function () {
         var v = b.querySelector('#hNew').value.trim(); if (!v) return;
         var n = Math.max(1, Math.min(12, Number(b.querySelector('#hN').value) || 1));
-        S.habits.push({ id: 'h' + uid(), title: v, icon: '🌱', times: n, log: {} });
+        var ico = (b.querySelector('#hIco').value || '🌱').slice(0, 4);
+        S.habits.push({ id: 'h' + uid(), title: v, icon: ico, times: n, log: {} });
         save(); renderSub('hab');
       });
     }

@@ -1,14 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kamron APP">
-  <!--
-    Логотип: буква К на чёрном. Без обводок, бликов и градиентов — на
-    домашнем экране иконка видна размером с ноготь, и выживает в ней
-    только силуэт. Диагонали нарисованы линиями с круглыми концами, а не
-    многоугольниками: так стык со стойкой выходит без зазубрины.
-  -->
-  <rect width="512" height="512" fill="#000"/>
-  <g stroke="#fff" stroke-width="46" stroke-linecap="round" fill="none">
-    <path d="M173 142 L173 370"/>
-    <path d="M200 258 L352 146"/>
-    <path d="M200 254 L352 366"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#e9fc82"/>
+      <stop offset="1" stop-color="#c6e43a"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef4dd"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <g transform="translate(256 264) rotate(45)">
+    <rect x="-128" y="-128" width="256" height="256" rx="100" fill="url(#body)"/>
   </g>
+  <g fill="#151813">
+    <circle cx="214" cy="242" r="21"/>
+    <circle cx="298" cy="242" r="21"/>
+  </g>
+  <path d="M210 300 C 230 332, 282 332, 302 300" fill="none" stroke="#151813" stroke-width="21" stroke-linecap="round"/>
 </svg>

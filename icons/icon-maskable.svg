@@ -1,13 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kamron APP">
-  <!--
-    Вариант под маску. Система обрезает иконку под свою форму — круг,
-    скруглённый квадрат, каплю, — поэтому буква сжата к середине и целиком
-    помещается в безопасную зону в 80% ширины.
-  -->
-  <rect width="512" height="512" fill="#000"/>
-  <g stroke="#fff" stroke-width="37" stroke-linecap="round" fill="none">
-    <path d="M190 165 L190 347"/>
-    <path d="M212 258 L334 168"/>
-    <path d="M212 254 L334 344"/>
+  <defs>
+    <linearGradient id="bgm" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#e9fc82"/>
+      <stop offset="1" stop-color="#c6e43a"/>
+    </linearGradient>
+    <linearGradient id="bodym" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef4dd"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bgm)"/>
+  <g transform="translate(256 262) rotate(45)">
+    <rect x="-100" y="-100" width="200" height="200" rx="78" fill="url(#bodym)"/>
   </g>
+  <g fill="#151813">
+    <circle cx="223" cy="246" r="16.5"/>
+    <circle cx="289" cy="246" r="16.5"/>
+  </g>
+  <path d="M220 292 C 236 317, 276 317, 292 292" fill="none" stroke="#151813" stroke-width="16.5" stroke-linecap="round"/>
 </svg>

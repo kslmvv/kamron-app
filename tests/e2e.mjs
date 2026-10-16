@@ -88,11 +88,25 @@ ok('есть объяснение «почему»', await page.isVisible('#why'
 await page.click('#why');
 await page.waitForTimeout(400);
 ok('объяснение раскрывается', await page.isVisible('#whyText'));
-ok(
-  'в объяснении названа причина',
-  (await page.textContent('#whyText')).includes('Мимо прошли') ||
-    (await page.textContent('#whyText')).includes('отметка')
-);
+ok('в объяснении названа причина', /Мимо:|Сейчас:|отмет/.test(await page.textContent('#whyText')));
+ok('объяснение короткое', (await page.textContent('#whyText')).length < 160);
+
+part('Питомец');
+const pet = await page.evaluate(() => {
+  const body = document.querySelector('.pet .body');
+  const blob = document.querySelector('.pet .blob');
+  const face = document.querySelector('.pet .face');
+  return {
+    faceInBody: !!(body && face && body.contains(face)),
+    crestInBody: !!(body && body.contains(document.getElementById('crest'))),
+    bodyAnim: body ? getComputedStyle(body).animationName : '',
+    blobAnim: blob ? getComputedStyle(blob).animationName : ''
+  };
+});
+ok('лицо находится внутри тела', pet.faceInBody);
+ok('знак уровня движется с телом', pet.crestInBody);
+ok('тело анимируется целиком', /breathe|boil|hop|rush|sink/.test(pet.bodyAnim));
+ok('у тела нет поворота — его крутит только фигура', /turn/.test(pet.blobAnim) && !/turn/.test(pet.bodyAnim));
 
 part('Честное время');
 await page.evaluate(() => document.querySelector('#list .row.missed').click());
