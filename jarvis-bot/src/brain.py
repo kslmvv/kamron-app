@@ -39,6 +39,14 @@ TOOLS = [
                         "type": "string",
                         "description": "ЧЧ:ММ, если человек назвал время. Иначе пусто.",
                     },
+                    "icon": {
+                        "type": "string",
+                        "description": (
+                            "Один эмодзи, подходящий по смыслу задачи: кино — 🎬, зал — 🏋️, "
+                            "покупки — 🛒, уроки — 📚, звонок — 📞, врач — 🩺. "
+                            "Если ничего не подходит — не указывать."
+                        ),
+                    },
                 },
                 "required": ["title"],
             },
@@ -65,6 +73,10 @@ TOOLS = [
                         "type": "array",
                         "items": {"type": "integer"},
                         "description": "Дни недели для повторяющегося дела: 1 понедельник … 7 воскресенье",
+                    },
+                    "icon": {
+                        "type": "string",
+                        "description": "Один эмодзи по смыслу дела. Если ничего не подходит — не указывать.",
                     },
                 },
                 "required": ["title", "time"],
@@ -172,6 +184,9 @@ async def run_tool(name: str, arguments: dict) -> str:
     payload = dict(arguments or {})
     if kind in ("task", "routine"):
         payload["date"] = app_link.resolve_date(payload.get("date", ""))
+        # Эмодзи приходит от модели, но доверять ей длину нельзя.
+        icon = str(payload.get("icon") or "").strip()
+        payload["icon"] = icon[:4] if icon else ""
     if kind == "routine" and payload.get("days"):
         payload["date"] = ""  # повторяющееся дело к одной дате не привязано
 

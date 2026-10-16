@@ -111,6 +111,53 @@
   var _uid = 0;
   function uid() { return Date.now().toString(36) + '-' + (++_uid) + '-' + Math.random().toString(36).slice(2, 6); }
 
+  /* Эмодзи подбирается по смыслу названия: задача «посмотреть кино» должна
+     выглядеть как кино, а не как одинаковая канцелярская кнопка. Словарь
+     работает без интернета; если Jarvis прислал свой эмодзи — он главнее. */
+  var ICONS = [
+    [/кино|фильм|сериал|ютуб|youtube|нетфликс|netflix/, '🎬'],
+    [/зал|трениров|спорт|бег|пробеж|отжим|турник|качал|фитнес/, '🏋️'],
+    [/футбол|баскет|теннис|матч|игра в/, '⚽️'],
+    [/обед|ужин|завтрак|поесть|покушать|еда|ресторан|кафе/, '🍽️'],
+    [/кофе|чай/, '☕️'],
+    [/вода|попить|стакан/, '💧'],
+    [/магаз|купить|покуп|базар|продукт|заказ/, '🛒'],
+    [/урок|учёб|учеб|домашк|задани|эссе|реферат|курсов|экзамен|зачёт|зачет|пара/, '📚'],
+    [/презентац|слайд|доклад/, '📊'],
+    [/прочит|чтение|книг/, '📖'],
+    [/написать|письмо|текст|статья|конспект/, '📝'],
+    [/работ|проект|код|промт|claude|дедлайн|отчёт|отчет/, '💻'],
+    [/звон|позвон|созвон|набрать/, '📞'],
+    [/встреч|собрани|митинг|переговор/, '🤝'],
+    [/врач|больниц|анализ|стоматолог|зуб|аптек|лекарств|таблет/, '🩺'],
+    [/душ|помыть|ванн|зубы/, '🚿'],
+    [/убра|уборк|пропылес|помыть пол|посуд/, '🧹'],
+    [/стирк|постира|бель/, '🧺'],
+    [/дорог|ехать|поехать|такси|автобус|метро/, '🚌'],
+    [/самол|аэропорт|рейс|виза|поездк|путешеств/, '✈️'],
+    [/деньг|оплат|заплат|счёт|счет|перевод|карт|банк|налог/, '💳'],
+    [/подар|день рожден|днюх|поздрав/, '🎁'],
+    [/музык|гитар|пианино|песн/, '🎧'],
+    [/игр|пристав|катк|dota|cs/, '🎮'],
+    [/спать|сон|отбой|лечь/, '😴'],
+    [/мама|папа|брат|сестр|родител|семь|бабушк|дедушк/, '👨‍👩‍👦'],
+    [/молит|намаз|мечет|коран/, '🕌'],
+    [/универ|институт|лекци|декан|деканат/, '🎓'],
+    [/почта|письмо на|mail|имейл/, '✉️'],
+    [/фото|снять|камер/, '📷'],
+    [/ремонт|почин|собрать|инструмент/, '🔧'],
+    [/стрижк|парикмахер|барбер/, '💈'],
+    [/прогул|погул|парк|улиц/, '🌳']
+  ];
+  function guessIcon(title) {
+    var text = String(title || '').toLowerCase();
+    for (var i = 0; i < ICONS.length; i++) if (ICONS[i][0].test(text)) return ICONS[i][1];
+    return '📌';
+  }
+  function taskIcon(task) {
+    return (task && task.icon) || guessIcon(task && task.title);
+  }
+
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
 
   /* ── День ─────────────────────────────────────────────────────────── */
@@ -150,7 +197,8 @@
 
     tasksOn(dateKey(date)).forEach(function (t) {
       var f = t.time ? toMin(t.time) : 1439;
-      out.push({ id: 'task-' + t.id, taskId: t.id, from: f, to: t.time ? f + 30 : 1440, name: t.title, kind: 'task', icon: '📌', tile: 'lime', free: !t.time });
+      out.push({ id: 'task-' + t.id, taskId: t.id, from: f, to: t.time ? f + 30 : 1440,
+                 name: t.title, kind: 'task', icon: taskIcon(t), tile: 'lime', free: !t.time });
     });
     out.sort(function (a, b) { return a.from - b.from; });
     return out;
@@ -806,7 +854,8 @@
     var base = new Date(view);
     var opts = [['сегодня', 0], ['завтра', 1], ['послезавтра', 2], ['через неделю', 7]];
     s.innerHTML = '<div class="grab"></div><h3>Новая задача</h3>' +
-      '<div class="adder" style="margin:0"><input type="text" id="nTitle" placeholder="Что сделать" maxlength="80"></div>' +
+      '<div class="adder" style="margin:0"><span class="tile lime" id="nIcon" style="flex:none">📌</span>' +
+      '<input type="text" id="nTitle" placeholder="Что сделать" maxlength="80"></div>' +
       '<div class="picks" id="nPicks"></div>' +
       '<div class="field"><label>Дата</label><input type="date" id="nDate"></div>' +
       '<div class="field"><label>Время (можно без него)</label><input type="time" id="nTime"></div>' +
@@ -826,11 +875,14 @@
       picks.appendChild(b);
     });
     dIn.addEventListener('change', function () { picks.querySelectorAll('.pick').forEach(function (x) { x.classList.remove('on'); }); });
-    s.querySelector('#nTitle').focus();
+    var titleInput = s.querySelector('#nTitle'), iconBox = s.querySelector('#nIcon');
+    titleInput.addEventListener('input', function () { iconBox.textContent = guessIcon(titleInput.value); });
+    titleInput.focus();
     s.querySelector('#nSave').addEventListener('click', function () {
       var title = s.querySelector('#nTitle').value.trim();
       if (!title) { toast('Нужно название.'); return; }
-      S.tasks.push({ id: uid(), title: title, date: dIn.value, time: s.querySelector('#nTime').value || '', done: false });
+      S.tasks.push({ id: uid(), title: title, date: dIn.value,
+                     time: s.querySelector('#nTime').value || '', icon: guessIcon(title), done: false });
       save(); closeSheet();
       var when = dIn.value === dateKey(new Date()) ? 'на сегодня' : 'на ' + fromKey(dIn.value).getDate() + ' ' + MONTHS[fromKey(dIn.value).getMonth()];
       toast('Добавлено ' + when + '.');
@@ -1393,6 +1445,12 @@
       всего: t.units,
       упущено: t.miss,
       routine: t.day.map(fmt),
+      blocks: t.day.map(function (b) {
+        return {
+          from: toHm(b.from), to: toHm(b.to), name: b.name, kind: b.kind,
+          отмечено: isCheckable(b) ? statusOf(b, t.dk, t.nk, t.nowMin) : 'auto'
+        };
+      }),
       routineTomorrow: buildDay(tomorrow).map(function (b) { return toHm(b.from) + '–' + toHm(b.to) + ' ' + b.name; }),
       tasks: S.tasks.filter(function (x) { return x.date >= t.dk; })
         .map(function (x) { return x.title + (x.time ? ' в ' + x.time : '') + ' (' + x.date + ')' + (x.done ? ' — сделано' : ''); }),
@@ -1463,7 +1521,10 @@
         : (p.days && p.days.length ? nextDateFor(p.days) : dateKey(new Date()));
       var time = /^\d{2}:\d{2}$/.test(p.time || '') ? p.time : '';
       var twin = S.tasks.some(function (x) { return x.title === title && x.date === date && x.time === time; });
-      if (!twin) S.tasks.push({ id: uid(), title: title, date: date, time: time, done: false });
+      if (!twin) S.tasks.push({
+        id: uid(), title: title, date: date, time: time,
+        icon: (p.icon && String(p.icon).slice(0, 4)) || guessIcon(title), done: false
+      });
       return true;
     }
     if (kind === 'note') {

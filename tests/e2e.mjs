@@ -380,6 +380,40 @@ ok(
 );
 ok('средний процент не выдумывается', (await clean.textContent('#stAvg')) === '—');
 
+part('Эмодзи по смыслу задачи');
+// Словарь живёт внутри замыкания, поэтому проверяем через интерфейс:
+// кладём задачу и смотрим, какой значок встал в плане дня.
+const cases = [
+  ['Посмотреть кино', '🎬'],
+  ['Сходить в зал', '🏋️'],
+  ['Купить продукты', '🛒'],
+  ['Сделать уроки', '📚'],
+  ['Позвонить маме', '📞'],
+  ['Записаться к врачу', '🩺'],
+  ['Полить цветы', '📌']
+];
+for (const [title, want] of cases) {
+  await page.evaluate(t => {
+    const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+    s.tasks = [{ id: 'probe', title: t, date: '2026-10-15', time: '', done: false }];
+    localStorage.setItem('den-kamrona-v3', JSON.stringify(s));
+  }, title);
+  await page.reload();
+  await page.waitForTimeout(400);
+  const got = await page.evaluate(() => {
+    const row = [...document.querySelectorAll('#list .row')].find(r => r.textContent.includes('без времени'));
+    return row ? row.querySelector('.tile').textContent.trim() : '';
+  });
+  ok(`«${title}» → ${want}`, got === want);
+}
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  s.tasks = [];
+  localStorage.setItem('den-kamrona-v3', JSON.stringify(s));
+});
+await page.reload();
+await page.waitForTimeout(300);
+
 part('Связь с Jarvis');
 // Поддельный сервер приложения: проверяем, что снимок уходит, а надиктованное
 // боту приходит обратно и применяется.

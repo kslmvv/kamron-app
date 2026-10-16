@@ -44,6 +44,15 @@ class Config:
     price_brain_in = _float("PRICE_BRAIN_IN", 0.15)    # за 1M токенов
     price_brain_out = _float("PRICE_BRAIN_OUT", 0.60)  # за 1M токенов
 
+    # Сам пишет голосом в течение дня: напоминает перед делом, в начале
+    # свободного окна и когда дело вот-вот закроется. Потолок — чтобы в
+    # плотный день он не завалил переписку.
+    nudge_enabled = os.environ.get("NUDGE_ENABLED", "1") not in ("0", "false", "")
+    nudge_max = _int("NUDGE_MAX", 8)
+    nudge_before = _int("NUDGE_BEFORE_MIN", 10)
+    quiet_from = os.environ.get("QUIET_FROM", "23:00")
+    quiet_to = os.environ.get("QUIET_TO", "06:20")
+
     # Когда бот пишет сам.
     morning_at = os.environ.get("MORNING_AT", "06:35")
     evening_at = os.environ.get("EVENING_AT", "21:30")

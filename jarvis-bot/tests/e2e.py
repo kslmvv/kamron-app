@@ -177,12 +177,19 @@ async def ai_speech(request: web.Request):
 
 
 # ── поддельный сервер приложения ──────────────────────────────────────────
+SNAP = {"день": None, "blocks": []}
+
+
 async def app_snapshot(request: web.Request):
     return web.json_response({
-        "routine": ["08:30 Siyosatshunoslik", "17:05 Работа", "21:20 Уроки"],
-        "tasks": ["Сдать эссе"],
-        "habits": ["Вода 2/6"],
-        "снимокМинутНазад": 12,
+        "snapshot": {
+            "день": SNAP["день"],
+            "routine": ["08:30 Siyosatshunoslik", "17:05 Работа", "21:20 Уроки"],
+            "blocks": SNAP["blocks"],
+            "tasks": ["Сдать эссе"],
+            "habits": ["Вода 2/6"],
+        },
+        "возрастМинут": 12,
     })
 
 
@@ -286,6 +293,58 @@ async def run() -> None:
     })
     ok("длинное отклонено", "длинное" in sent["messages"][-1].lower())
     ok("длинное не распознавалось", sent["transcribed"] == 1)
+
+    print("\nНапоминания по ходу дня")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from src import main as bot_main
+
+    today = datetime.now(ZoneInfo(config.timezone))
+    SNAP["день"] = today.strftime("%Y-%m-%d")
+    SNAP["blocks"] = [
+        {"from": "08:30", "to": "09:40", "name": "Siyosatshunoslik", "kind": "lesson", "отмечено": "open"},
+        {"from": "09:40", "to": "11:20", "name": "Свободное окно", "kind": "window", "отмечено": "auto"},
+        {"from": "11:20", "to": "12:30", "name": "Дорога на работу", "kind": "travel", "отмечено": "auto"},
+    ]
+    state.cost = 0
+    state.nudges = 0
+    state.save()
+
+    def at(hhmm):
+        hours, minutes = hhmm.split(":")
+        return today.replace(hour=int(hours), minute=int(minutes), second=0)
+
+    before = len(sent["voices"])
+    await bot_main.nudges(at("07:00"))
+    ok("в спокойное время не пишет", len(sent["voices"]) == before)
+
+    await bot_main.nudges(at("08:20"))
+    ok("за 10 минут до пары напоминает", len(sent["voices"]) == before + 1)
+    if len(sent["voices"]) > before:
+        ok("напоминание ушло голосовым", sent["voices"][-1]["bytes"] > 500)
+
+    await bot_main.nudges(at("08:20"))
+    ok("дважды про одно и то же не пишет", len(sent["voices"]) == before + 1)
+
+    await bot_main.nudges(at("09:40"))
+    ok("о начале свободного окна напоминает", len(sent["voices"]) == before + 2)
+
+    await bot_main.nudges(at("11:10"))
+    ok("про дорогу не напоминает", len(sent["voices"]) == before + 2)
+
+    SNAP["блоки_день"] = None
+    SNAP["день"] = "2000-01-01"
+    await bot_main.nudges(at("08:20"))
+    ok("по вчерашнему снимку молчит", len(sent["voices"]) == before + 2)
+    SNAP["день"] = today.strftime("%Y-%m-%d")
+
+    state.nudges = config.nudge_max
+    state.save()
+    await bot_main.nudges(at("09:40"))
+    ok("упёршись в лимит напоминаний, молчит", len(sent["voices"]) == before + 2)
+
+    ok("ночь считается тихим временем", bot_main.quiet_now(at("23:30")) and bot_main.quiet_now(at("05:00")))
+    ok("день тихим не считается", not bot_main.quiet_now(at("12:00")))
 
     await telegram.stop()
     for runner in runners:

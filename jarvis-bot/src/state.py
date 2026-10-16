@@ -32,6 +32,7 @@ class State:
         self.day = ""
         self.cost = 0.0
         self.messages = 0
+        self.nudges = 0
         self.fired: list[str] = []
         self.update_id = 0
         self.history: list[dict] = []
@@ -47,6 +48,7 @@ class State:
             self.day = raw.get("day", "")
             self.cost = float(raw.get("cost", 0.0))
             self.messages = int(raw.get("messages", 0))
+            self.nudges = int(raw.get("nudges", 0))
             self.fired = list(raw.get("fired", []))
             self.update_id = int(raw.get("update_id", 0))
             self.history = list(raw.get("history", []))
@@ -67,6 +69,7 @@ class State:
                         "day": self.day,
                         "cost": round(self.cost, 6),
                         "messages": self.messages,
+                        "nudges": self.nudges,
                         "fired": self.fired,
                         "update_id": self.update_id,
                         "history": self.history[-20:],
@@ -91,6 +94,7 @@ class State:
             self.day = day
             self.cost = 0.0
             self.messages = 0
+            self.nudges = 0
             self.fired = []
             self.history = []
             self.save()
