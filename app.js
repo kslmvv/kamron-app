@@ -47,7 +47,8 @@
 
   var S = { cfg: {}, done: {}, tasks: [], habits: null, chat: [], goal: 80, weekMon: true,
             sched: null, review: {}, focus: {}, reviewAt: '21:30',
-            notif: { on: false, pre: true, win: true, end: true, rev: true }, fired: {} };
+            notif: { on: false, pre: true, win: true, end: true, rev: true }, fired: {},
+            link: { url: '', token: '' }, notes: [] };
 
   function load() {
     try {
@@ -64,6 +65,8 @@
         S.reviewAt = raw.reviewAt || '21:30';
         if (raw.notif) S.notif = raw.notif;
         S.fired = raw.fired || {};
+        S.link = raw.link || { url: '', token: '' };
+        S.notes = raw.notes || [];
       }
     } catch (e) {}
     FIELDS.forEach(function (f) { if (S.cfg[f.key] === undefined) S.cfg[f.key] = f.def; });
@@ -74,7 +77,10 @@
       { id: 'h3', title: 'Чтение', icon: '📖', times: 1, log: {} }
     ];
   }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+    syncSoon();
+  }
 
   function toMin(hm) { var p = String(hm).split(':'); return Number(p[0]) * 60 + Number(p[1] || 0); }
   function toHm(m) {
@@ -191,7 +197,7 @@
    'viewToday','viewChat','viewCal','viewSetup','navToday','navChat','navSetup','why','whyText','calBack','gv','wm',
    'chatLive','chatHist','toHist','histBack','histTabs','histBody','chatHello','chips','thread','chatInput','chatSend','composer',
    'calTitle','calGrid','calPrev','calNext','dayCard','stStreak','stAvg','stGoal','heat','heatMeta',
-   'setRoot','setSub','subBody','setBack','habCount','schedCount','focusBtn','revCall','revSub','crest','insights','notifSub'].forEach(function (id) { el[id] = document.getElementById(id); });
+   'setRoot','setSub','subBody','setBack','habCount','schedCount','focusBtn','revCall','revSub','crest','insights','notifSub','linkSub','noteBox','noteList'].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var view = new Date();
   var calMonth = new Date();
@@ -491,6 +497,7 @@
     el.lost.textContent = t.miss ? 'Упущено безвозвратно: ' + t.miss + ' — это уже не вернуть' : '';
 
     renderHabTop(t.dk);
+    renderNotes();
 
     var live = t.day.find(function (b) { return !b.free && t.nowMin >= b.from && t.nowMin < b.to; });
     el.planMeta.textContent = isToday() && live ? 'сейчас ' + live.name.toLowerCase() : t.day.length ? 'до ' + toHm(t.day[t.day.length - 1].to) : '';
@@ -606,6 +613,30 @@
     var revReady = isToday() && t.nowMin >= toMin(S.reviewAt) && !(S.review[t.dk] && S.review[t.dk].closed);
     el.revCall.hidden = !revReady;
     if (revReady) el.revSub.textContent = t.miss ? 'упущено ' + t.miss + ' — отметь причину за минуту' : 'день закрыт на ' + t.pct + '%, подведём итог';
+  }
+
+  /* Заметки показываются, только когда они есть: пустого раздела быть не должно. */
+  function renderNotes() {
+    el.noteBox.hidden = !S.notes.length;
+    if (!S.notes.length) return;
+    el.noteList.innerHTML = '';
+    S.notes.slice(-5).reverse().forEach(function (n, i) {
+      var row = document.createElement('div');
+      row.className = 'row glass';
+      row.style.animationDelay = (i * 50) + 'ms';
+      row.innerHTML = '<span class="tile sun">📝</span><div class="meat"><b></b><small></small></div>' +
+        '<button type="button" class="del" aria-label="Удалить">✕</button>';
+      var title = row.querySelector('b');
+      title.textContent = n.body;
+      title.style.fontWeight = '600';
+      row.querySelector('small').textContent = new Date(n.ts)
+        .toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      row.querySelector('.del').addEventListener('click', function () {
+        S.notes = S.notes.filter(function (x) { return x.id !== n.id; });
+        save(); renderNotes();
+      });
+      el.noteList.appendChild(row);
+    });
   }
 
   /* Привычки на дашборде — первые три. */
@@ -1098,6 +1129,40 @@
         push('Проверка', 'Так выглядит напоминание. Сейчас ' + toHm(n.getHours() * 60 + n.getMinutes()) + '.', 'test');
       });
     }
+    if (name === 'link') {
+      b.innerHTML = '<div class="sec-head"><span class="cap">Связь с Jarvis</span><small>бот в Telegram</small></div>' +
+        '<div class="card glass">' +
+        '<div class="field" style="padding-top:0"><label for="lUrl">Адрес сервера</label></div>' +
+        '<input type="text" id="lUrl" placeholder="https://…up.railway.app" style="width:100%;font:inherit;font-weight:600;border:none;border-radius:13px;padding:11px 12px;background:rgba(255,255,255,.62)">' +
+        '<div class="field"><label for="lTok">Ключ доступа</label></div>' +
+        '<input type="password" id="lTok" placeholder="APP_ACCESS_TOKEN" style="width:100%;font:inherit;font-weight:600;border:none;border-radius:13px;padding:11px 12px;background:rgba(255,255,255,.62)">' +
+        '</div>' +
+        '<button class="btn" id="lTest" style="margin-bottom:10px">Проверить связь</button>' +
+        '<button class="btn ghost" id="lPull">Забрать записи от Jarvis</button>' +
+        '<p class="empty" id="lState" style="text-align:left;line-height:1.5">Через этот адрес бот видит твой день и кладёт сюда то, что ты ему наговорил. Ключ тот же, что в переменной APP_ACCESS_TOKEN на сервере.</p>';
+      var u = b.querySelector('#lUrl'), k = b.querySelector('#lTok'), st = b.querySelector('#lState');
+      u.value = S.link.url || ''; k.value = S.link.token || '';
+      u.addEventListener('change', function () { S.link.url = u.value.trim(); save(); });
+      k.addEventListener('change', function () { S.link.token = k.value.trim(); save(); });
+      b.querySelector('#lTest').addEventListener('click', function () {
+        S.link.url = u.value.trim(); S.link.token = k.value.trim(); save();
+        if (!linked()) { st.textContent = 'Заполни адрес и ключ.'; return; }
+        st.textContent = 'Проверяю…';
+        fetch(S.link.url.replace(/\/$/, '') + '/api/health')
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var age = d['снимокМинутНазад'];
+            st.textContent = 'Сервер отвечает. Снимок обновлялся ' +
+              (age === null || age === undefined ? 'ни разу' : age + ' мин назад') + '.';
+            sendSnapshot();
+          })
+          .catch(function () { st.textContent = 'Сервер не отвечает. Проверь адрес.'; });
+      });
+      b.querySelector('#lPull').addEventListener('click', function () {
+        if (!linked()) { st.textContent = 'Сначала заполни адрес и ключ.'; return; }
+        pullChanges(); st.textContent = 'Запрос отправлен.';
+      });
+    }
     if (name === 'data') {
       b.innerHTML = '<div class="sec-head"><span class="cap">Данные</span><small></small></div>' +
         '<button class="btn ghost" id="rDay" style="margin-bottom:10px">Сбросить сегодняшние отметки</button>' +
@@ -1116,6 +1181,11 @@
     el.habCount.textContent = S.habits.length + ' ' + plural(S.habits.length, 'привычка', 'привычки', 'привычек');
     el.schedCount.textContent = schedCount();
     el.notifSub.textContent = notifSub();
+    el.linkSub.textContent = linkSub();
+  }
+  function linkSub() {
+    if (!linked()) return 'не настроена';
+    return linkState === 'fail' ? 'настроена, сервер молчит' : 'настроена';
   }
   function notifSub() {
     if (!('Notification' in window)) return 'браузер не поддерживает';
@@ -1299,6 +1369,129 @@
   }
   setInterval(checkNotify, 30000);
 
+  /* ══ Связь с Jarvis ════════════════════════════════════════════════
+     Приложение держит данные у себя в браузере, поэтому бот не может
+     писать в него напрямую. Обмен идёт через сервер: сюда уходит снимок
+     дня, оттуда забирается очередь того, что надиктовано боту.        */
+  var linkState = 'idle';
+  function linked() { return !!(S.link && S.link.url && S.link.token); }
+  function linkHeaders() { return { 'content-type': 'application/json', authorization: 'Bearer ' + S.link.token }; }
+
+  /** Что бот должен знать о дне. Отправляем словами — так модель читает лучше. */
+  function dayDigest() {
+    var t = tally(new Date());
+    var fmt = function (b) {
+      var st = statusOf(b, t.dk, t.nk, t.nowMin);
+      var mark = !isCheckable(b) ? '' : st === 'done' ? ' — сделано' : st === 'missed' ? ' — упущено' : '';
+      return toHm(b.from) + '–' + toHm(b.to) + ' ' + b.name + (b.room ? ' (ауд. ' + b.room + ')' : '') + mark;
+    };
+    var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    return {
+      день: t.dk,
+      процент: t.pct,
+      сделано: t.hit,
+      всего: t.units,
+      упущено: t.miss,
+      routine: t.day.map(fmt),
+      routineTomorrow: buildDay(tomorrow).map(function (b) { return toHm(b.from) + '–' + toHm(b.to) + ' ' + b.name; }),
+      tasks: S.tasks.filter(function (x) { return x.date >= t.dk; })
+        .map(function (x) { return x.title + (x.time ? ' в ' + x.time : '') + ' (' + x.date + ')' + (x.done ? ' — сделано' : ''); }),
+      habits: S.habits.map(function (h) { return h.title + ' ' + (h.log[t.dk] || 0) + '/' + h.times; }),
+      notes: S.notes.slice(-10).map(function (n) { return n.body; }),
+      отбой: S.cfg.sleep
+    };
+  }
+
+  var syncTimer = null, lastSent = '';
+  function syncSoon(now) {
+    if (!linked()) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(sendSnapshot, now ? 0 : 4000);
+  }
+  function sendSnapshot() {
+    if (!linked()) return;
+    var body = JSON.stringify(dayDigest());
+    if (body === lastSent) return;
+    fetch(S.link.url.replace(/\/$/, '') + '/api/snapshot', {
+      method: 'POST', headers: linkHeaders(), body: body
+    }).then(function (r) {
+      if (r.ok) { lastSent = body; linkState = 'ok'; } else linkState = 'fail';
+    }).catch(function () { linkState = 'fail'; });
+  }
+
+  /** Забирает то, что надиктовано боту, применяет и подтверждает. */
+  function pullChanges() {
+    if (!linked()) return;
+    fetch(S.link.url.replace(/\/$/, '') + '/api/changes', { headers: linkHeaders() })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        var list = (data && (data['изменения'] || data.changes)) || [];
+        if (!list.length) return;
+        var done = [];
+        list.forEach(function (change) {
+          if (applyChange(change)) done.push(change.id);
+        });
+        if (!done.length) return;
+        save();
+        fetch(S.link.url.replace(/\/$/, '') + '/api/changes/ack', {
+          method: 'POST', headers: linkHeaders(), body: JSON.stringify({ ids: done })
+        }).catch(function () {});
+        toast('Из Jarvis: ' + done.length + ' ' + plural(done.length, 'запись', 'записи', 'записей'));
+        // Перерисовываем всегда: записи могли прийти, пока открыт другой раздел.
+        renderToday();
+      })
+      .catch(function () {});
+  }
+
+  function nextDateFor(days) {
+    // Повторяющееся дело приложение не умеет, поэтому ставим ближайший раз.
+    var d = new Date();
+    for (var i = 0; i < 8; i++) {
+      var w = d.getDay() === 0 ? 7 : d.getDay();
+      if (days.indexOf(w) >= 0) return dateKey(d);
+      d.setDate(d.getDate() + 1);
+    }
+    return dateKey(new Date());
+  }
+
+  function applyChange(change) {
+    var kind = change && change.kind, p = (change && change.data) || {};
+    if (kind === 'task' || kind === 'routine') {
+      var title = String(p.title || '').trim();
+      if (!title) return false;
+      var date = /^\d{4}-\d{2}-\d{2}$/.test(p.date || '') ? p.date
+        : (p.days && p.days.length ? nextDateFor(p.days) : dateKey(new Date()));
+      var time = /^\d{2}:\d{2}$/.test(p.time || '') ? p.time : '';
+      var twin = S.tasks.some(function (x) { return x.title === title && x.date === date && x.time === time; });
+      if (!twin) S.tasks.push({ id: uid(), title: title, date: date, time: time, done: false });
+      return true;
+    }
+    if (kind === 'note') {
+      var body = String(p.body || '').trim();
+      if (!body) return false;
+      S.notes.push({ id: uid(), ts: Date.now(), body: body });
+      S.notes = S.notes.slice(-50);
+      return true;
+    }
+    if (kind === 'complete') {
+      var want = String(p.title || '').trim().toLowerCase();
+      if (!want) return false;
+      var dk = dateKey(new Date()), m = marks(dk), hit = false;
+      buildDay(new Date()).forEach(function (b) {
+        if (!hit && isCheckable(b) && b.name.toLowerCase().indexOf(want) >= 0 && m.indexOf(b.id) < 0) {
+          m.push(b.id); hit = true;
+        }
+      });
+      S.tasks.forEach(function (x) {
+        if (!hit && x.date === dk && x.title.toLowerCase().indexOf(want) >= 0 && !x.done) {
+          x.done = true; m.push('task-' + x.id); hit = true;
+        }
+      });
+      return hit;
+    }
+    return false;
+  }
+
   /* ── Навигация ────────────────────────────────────────────────────── */
   function go(name) {
     tab = name; closeSheet();
@@ -1310,10 +1503,11 @@
     [['today', el.navToday], ['chat', el.navChat], ['setup', el.navSetup]].forEach(function (p) {
       p[1].classList.toggle('active', p[0] === name || (name === 'cal' && p[0] === 'setup'));
     });
-    if (name === 'today') renderToday();
+    if (name === 'today') { renderToday(); pullSoon(); }
     if (name === 'cal') renderCal();
     try { history.replaceState(null, '', '#' + name); } catch (e) {}
-    if (name === 'setup') { el.setSub.hidden = true; el.setRoot.hidden = false; el.notifSub.textContent = notifSub(); el.schedCount.textContent = schedCount(); el.habCount.textContent = S.habits.length + ' ' + plural(S.habits.length, 'привычка', 'привычки', 'привычек'); }
+    if (name === 'setup') { el.setSub.hidden = true; el.setRoot.hidden = false;
+      el.linkSub.textContent = linkSub(); el.notifSub.textContent = notifSub(); el.schedCount.textContent = schedCount(); el.habCount.textContent = S.habits.length + ' ' + plural(S.habits.length, 'привычка', 'привычки', 'привычек'); }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   el.navToday.addEventListener('click', function () { view = new Date(); go('today'); });
@@ -1327,8 +1521,24 @@
   /* Адрес запоминает вкладку: ярлыки с домашнего экрана ведут прямо в неё.
      День считается при старте всегда, даже если открыт другой раздел. */
   var TABS = { '#chat': 'chat', '#cal': 'cal', '#setup': 'setup', '#today': 'today' };
+  /* Записи от бота забираются при открытии и при возврате в приложение,
+     но не чаще раза в минуту — сервер считает запросы. Объявлено до первого
+     вызова: иначе присваивание обнулит отметку уже после неё, и запрос
+     уйдёт дважды подряд. */
+  var lastPull = 0;
+  function pullSoon() {
+    if (!linked() || Date.now() - lastPull < 60000) return;
+    lastPull = Date.now();
+    pullChanges();
+  }
+
   renderToday();
   go(TABS[location.hash] || 'today');
+  pullSoon();
+  syncSoon(true);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { pullSoon(); syncSoon(true); }
+  });
   window.addEventListener('hashchange', function () {
     var t = TABS[location.hash];
     if (t && t !== tab) go(t);

@@ -89,6 +89,11 @@
         </div>
         <div class="list" id="habTop"></div>
 
+        <div id="noteBox" hidden>
+          <div class="sec-head"><span class="cap">Заметки</span><small>надиктованы Jarvis</small></div>
+          <div class="list" id="noteList"></div>
+        </div>
+
         <div class="sec-head">
           <span class="cap">План дня</span>
           <div style="display: flex; align-items: center; gap: 10px">
@@ -194,6 +199,11 @@
           <button type="button" class="nav-row" data-go="calfull">
             <span class="tile sky" style="font-size: 20px">📅</span>
             <span><b>Календарь</b><small>история дней, статистика, цель</small></span
+            ><span class="chev">›</span>
+          </button>
+          <button type="button" class="nav-row" data-go="link">
+            <span class="tile mint" style="font-size: 20px">🔗</span>
+            <span><b>Связь с Jarvis</b><small id="linkSub">—</small></span
             ><span class="chev">›</span>
           </button>
           <button type="button" class="nav-row" data-go="notif">

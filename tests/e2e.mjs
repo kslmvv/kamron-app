@@ -11,6 +11,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 const { chromium } = await import('playwright').catch(() => import('playwright-core'));
+import { createServer } from 'node:http';
 import { staticServer } from './stub-server.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -378,6 +379,80 @@ ok(
   (await clean.evaluate(() => document.querySelectorAll('#insights .insight').length)) >= 1
 );
 ok('средний процент не выдумывается', (await clean.textContent('#stAvg')) === '—');
+
+part('Связь с Jarvis');
+// Поддельный сервер приложения: проверяем, что снимок уходит, а надиктованное
+// боту приходит обратно и применяется.
+const got = { snapshots: [], acked: [] };
+let queue = [
+  { id: 'c1', kind: 'task', data: { title: 'Позвонить в деканат', date: '2026-10-15', time: '' } },
+  { id: 'c2', kind: 'note', data: { body: 'Завтра занять очередь с утра' } }
+];
+const fake = createServer((req, res) => {
+  const cors = {
+    'access-control-allow-origin': '*',
+    'access-control-allow-headers': 'content-type, authorization',
+    'content-type': 'application/json'
+  };
+  if (req.method === 'OPTIONS') return res.writeHead(204, cors).end();
+  let body = '';
+  req.on('data', chunk => (body += chunk));
+  req.on('end', () => {
+    if (req.url === '/api/health')
+      return res.writeHead(200, cors).end(JSON.stringify({ ok: true, снимокМинутНазад: 3 }));
+    if (req.url === '/api/snapshot' && req.method === 'POST') {
+      got.snapshots.push(JSON.parse(body || '{}'));
+      return res.writeHead(200, cors).end('{"ok":true}');
+    }
+    if (req.url === '/api/changes' && req.method === 'GET') {
+      return res.writeHead(200, cors).end(JSON.stringify({ изменения: queue }));
+    }
+    if (req.url === '/api/changes/ack') {
+      got.acked.push(...(JSON.parse(body || '{}').ids || []));
+      queue = [];
+      return res.writeHead(200, cors).end('{"ok":true}');
+    }
+    res.writeHead(404, cors).end('{}');
+  });
+});
+await new Promise(resolve => fake.listen(8194, '127.0.0.1', resolve));
+
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  s.link = { url: 'http://127.0.0.1:8194', token: 'test' };
+  localStorage.setItem('den-kamrona-v3', JSON.stringify(s));
+});
+await page.goto(base + '#today');
+await page.reload(); // hash-переход не перезагружает страницу сам
+await page.waitForTimeout(1500);
+ok('снимок дня ушёл на сервер', got.snapshots.length >= 1);
+if (got.snapshots.length) {
+  const snap = got.snapshots[got.snapshots.length - 1];
+  ok('в снимке есть план дня', Array.isArray(snap.routine) && snap.routine.length > 5);
+  ok(
+    'в снимке отмечено упущенное',
+    snap.routine.some(x => x.includes('упущено'))
+  );
+  ok('в снимке есть привычки', Array.isArray(snap.habits) && snap.habits.length === 3);
+  ok('в снимке есть завтрашний план', Array.isArray(snap.routineTomorrow));
+}
+ok('надиктованное применено и подтверждено', got.acked.length === 2);
+ok(
+  'задача от бота появилась в плане',
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#list .meat b')].some(b => b.textContent.includes('деканат'))
+  )
+);
+ok(
+  'заметка от бота показана',
+  await page.evaluate(
+    () =>
+      !document.getElementById('noteBox').hidden &&
+      document.getElementById('noteList').textContent.includes('очередь')
+  )
+);
+await page.waitForTimeout(300);
+fake.close();
 
 console.log('\n' + '─'.repeat(46));
 if (errors.length) {
