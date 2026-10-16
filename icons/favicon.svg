@@ -1,13 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kamron APP">
   <defs>
-    <linearGradient id="bgf" x1="0" y1="0" x2="0.3" y2="1">
-      <stop offset="0" stop-color="#e9fc82"/>
-      <stop offset="1" stop-color="#c6e43a"/>
+    <linearGradient id="nightf" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#242e1d"/>
+      <stop offset="1" stop-color="#0b0d08"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="110" fill="url(#bgf)"/>
-  <g fill="none" stroke="#151813" stroke-width="80" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M164 132 V380"/>
-    <path d="M340 132 L194 256 L348 380"/>
-  </g>
+  <rect width="512" height="512" rx="110" fill="url(#nightf)"/>
+  <path transform="translate(64.57 407.92) scale(0.40514 -0.40514)" fill="#d6f24b" d="M70 0V750H276V165L221 208L646 750H865L257 0ZM428 358 580 484 875 0H640Z"/>
 </svg>
