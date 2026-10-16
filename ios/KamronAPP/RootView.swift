@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @StateObject private var model = WebViewModel()
+    @Environment(\.scenePhase) private var phase
 
     var body: some View {
         ZStack {
@@ -13,6 +14,11 @@ struct RootView: View {
                     model.reload()
                 }
             }
+        }
+        .onChange(of: phase) { newPhase in
+            // Вернулись в приложение — отдаём странице отметки, которые
+            // человек поставил кнопкой в виджете, пока его тут не было.
+            if newPhase == .active { model.wokeUp() }
         }
     }
 }

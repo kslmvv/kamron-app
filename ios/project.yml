@@ -5,12 +5,15 @@ name: KamronAPP
 options:
   bundleIdPrefix: com.kslmvv
   deploymentTarget:
-    iOS: "16.0"
+    # 17.0 — из-за кнопок в виджете и живом уведомлении: нажатие внутри
+    # виджета появилось только в этой версии. Ниже виджет соберётся, но
+    # кнопка «Сделал» станет просто картинкой.
+    iOS: "17.0"
   createIntermediateGroups: true
 
 settings:
   base:
-    MARKETING_VERSION: "0.20.0"
+    MARKETING_VERSION: "1.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
     # Команду подписи Xcode подставит сам при первом запуске на устройстве.
@@ -26,6 +29,7 @@ targets:
       - path: KamronAPP
         excludes:
           - Info.plist
+      - path: Shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kslmvv.kamronapp
@@ -39,3 +43,36 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_USER_SCRIPT_SANDBOXING: YES
+        # Общий ящик с виджетом. Требует платной учётной записи
+        # разработчика: на бесплатной группа не подписывается.
+        CODE_SIGN_ENTITLEMENTS: KamronAPP/KamronAPP.entitlements
+    dependencies:
+      # Расширение кладётся внутрь приложения — иначе виджета не будет
+      # в списке на устройстве.
+      - target: KamronWidgetsExtension
+        embed: true
+
+  KamronWidgetsExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: KamronWidgets
+        excludes:
+          - Info.plist
+      # Модель дня, хранилище и питомец общие с приложением: два отдельных
+      # описания одного и того же разъезжаются при первой же правке.
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kslmvv.kamronapp.widgets
+        PRODUCT_NAME: KamronWidgets
+        INFOPLIST_FILE: KamronWidgets/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: KamronWidgets/KamronWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: ActivityKit.framework
+      - sdk: AppIntents.framework

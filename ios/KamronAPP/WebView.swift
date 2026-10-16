@@ -11,6 +11,15 @@ final class WebViewModel: ObservableObject {
     /// иначе теряется история и состояние страницы.
     fileprivate weak var webView: WKWebView?
 
+    /// Мост живёт столько же, сколько представление: обработчик сообщений
+    /// WebKit держит слабо, и без своей ссылки он умрёт сразу после создания.
+    fileprivate var bridge: Bridge?
+
+    /// Отметки из виджета отдаём странице при каждом возвращении в приложение.
+    func wokeUp() {
+        bridge?.flushMarks()
+    }
+
     func reload() {
         failed = false
         guard let webView else { return }
@@ -37,7 +46,17 @@ struct WebView: UIViewRepresentable {
         configuration.allowsInlineMediaPlayback = true
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
+        // Канал к странице: она присылает снимок дня для виджета, а
+        // получает обратно отметки, сделанные кнопкой в виджете.
+        // Регистрируется до создания представления: настройки копируются
+        // в момент инициализации, и поздние правки уже не учитываются.
+        let bridge = Bridge()
+        configuration.userContentController.add(bridge, name: Bridge.channel)
+
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        bridge.webView = webView
+        model.bridge = bridge
+
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
@@ -102,6 +121,9 @@ struct WebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             model.failed = false
+            // Страница загрузилась — самое время отдать ей отметки,
+            // накопившиеся в виджете, пока приложение было закрыто.
+            model.wokeUp()
         }
 
         func webView(

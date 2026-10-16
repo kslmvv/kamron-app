@@ -572,6 +572,70 @@ ok('заметки вернулись из копии', back.notes === 1);
 await copyPage.close();
 backup.close();
 
+part('Мост в приложение на айфоне');
+
+/* Нативной обёртки в браузере нет, поэтому подделываем её приёмник: он
+   просто копит то, что страница пытается отправить виджету. */
+const widget = await browser.newContext({
+  locale: 'ru-RU',
+  timezoneId: 'Asia/Tashkent',
+  viewport: { width: 390, height: 844 }
+});
+await widget.addInitScript(freeze('2026-10-15T13:00:00Z')); // 18:00 Ташкент
+await widget.addInitScript(() => {
+  window.__sent = [];
+  window.webkit = {
+    messageHandlers: {
+      kamron: { postMessage: m => window.__sent.push(m) }
+    }
+  };
+});
+const wp = await widget.newPage();
+await wp.goto(base, { waitUntil: 'networkidle' });
+await wp.waitForTimeout(400);
+
+const sent = await wp.evaluate(() => window.__sent);
+const day = sent.length ? sent[sent.length - 1].day : null;
+ok('снимок дня ушёл виджету', !!day && sent[0].kind === 'day');
+ok(
+  'в снимке есть блоки со временем',
+  !!day && day.blocks.length > 0 && day.blocks.every(b => typeof b.from === 'number')
+);
+ok('у блоков есть эмодзи', !!day && day.blocks.some(b => b.icon));
+ok(
+  'настроение из короткого списка',
+  !!day && ['calm', 'focus', 'happy', 'worry', 'angry', 'sleep'].includes(day.mood)
+);
+
+/* Отметка из виджета, сделанная вовремя, засчитывается. */
+const honest = await wp.evaluate(() => {
+  const block = window.__sent[window.__sent.length - 1].day.blocks.find(
+    b => b.id.indexOf('work') === 0 || b.id.indexOf('lesson') === 0
+  );
+  const day = window.__sent[window.__sent.length - 1].day;
+  const at = new Date();
+  at.setHours(Math.floor((block.from + block.to) / 2 / 60), 0, 0, 0);
+  window.kamronApply([{ id: block.id, dateKey: day.dateKey, at: at.getTime() / 1000 }]);
+  const saved = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  return { id: block.id, done: (saved.done[day.dateKey] || []).includes(block.id) };
+});
+ok('отметка из виджета вовремя засчитана', honest.done);
+
+/* А сделанная после того, как дело прошло, — нет: иначе через виджет
+   можно было бы обойти честную блокировку времени. */
+const late = await wp.evaluate(() => {
+  const day = window.__sent[window.__sent.length - 1].day;
+  const block = day.blocks.find(
+    b => b.status === 'missed' || b.to + 15 < new Date().getHours() * 60 + new Date().getMinutes()
+  );
+  if (!block) return { skipped: true };
+  window.kamronApply([{ id: block.id, dateKey: day.dateKey, at: Date.now() / 1000 }]);
+  const saved = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  return { done: (saved.done[day.dateKey] || []).includes(block.id) };
+});
+ok('опоздавшая отметка не засчитана', late.skipped || !late.done);
+await wp.close();
+
 console.log('\n' + '─'.repeat(46));
 if (errors.length) {
   console.log('Ошибки в консоли:');

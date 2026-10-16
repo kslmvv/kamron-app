@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.0.0';
+  var VERSION = '1.1.0';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -670,6 +670,7 @@
     el.doneCount.textContent = 'Сегодня уже сделано — ' + t.hit + ' из ' + t.units;
     el.streak.innerHTML = '<i>🔥</i> <b>' + streakDays() + '</b>';
     syncQuick(t);
+    nativeSoon(true);
     if (t.pct >= 100) Pet.flash('proud', 'Весь день закрыт. Иди отдыхать — ты заслужил.', 4000);
   }
 
@@ -1557,6 +1558,98 @@
     }).catch(function () { linkState = 'fail'; });
   }
 
+  /* ── Мост в приложение на айфоне ──────────────────────────────────
+     Внутри нативной обёртки страница отдаёт снимок дня виджету и живому
+     уведомлению, а обратно получает отметки, сделанные кнопкой в виджете.
+     В обычном Safari моста нет, и весь этот кусок просто молчит. */
+
+  function nativeBridge() {
+    return window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.kamron;
+  }
+
+  /* Виджету хватает шести настроений: на иконке размером с ноготь
+     разница между «устал» и «задумался» всё равно не видна. */
+  function widgetMood(t) {
+    if (t.nowMin >= toMin(S.cfg.sleep) || t.nowMin < toMin(S.cfg.wake)) return 'sleep';
+    if (t.miss >= 3) return 'angry';
+    if (t.miss >= 1) return 'worry';
+    if (t.pct >= 80) return 'happy';
+    var live = t.day.find(function (b) { return !b.free && t.nowMin >= b.from && t.nowMin < b.to; });
+    return live ? 'focus' : 'calm';
+  }
+
+  function nativeDay() {
+    var t = tally(new Date());
+    return {
+      dateKey: t.dk,
+      updatedAt: Date.now() / 1000,
+      pct: t.pct,
+      missed: t.miss,
+      mood: widgetMood(t),
+      /* Дела без времени виджету не нужны: он показывает «что сейчас»,
+         а у них никакого «сейчас» нет. */
+      blocks: t.day.filter(function (b) { return !b.free; }).map(function (b) {
+        return {
+          id: b.id,
+          title: b.name,
+          icon: b.icon || '',
+          from: b.from,
+          to: b.to,
+          status: isCheckable(b) ? statusOf(b, t.dk, t.nk, t.nowMin) : 'open'
+        };
+      })
+    };
+  }
+
+  var natTimer = null, natLast = '';
+  function nativeSoon(now) {
+    if (!nativeBridge()) return;
+    clearTimeout(natTimer);
+    natTimer = setTimeout(nativeSend, now ? 0 : 1200);
+  }
+  function nativeSend() {
+    var bridge = nativeBridge();
+    if (!bridge) return;
+    var day = nativeDay(), body = JSON.stringify(day);
+    if (body === natLast) return;
+    natLast = body;
+    try { bridge.postMessage({ kind: 'day', day: day }); } catch (e) {}
+  }
+
+  /* Отметки из виджета. Виджет ничего не решает сам — он только
+     передаёт нажатие, а честность времени проверяется здесь, по тем же
+     правилам, что и в самом приложении. Нажатие, сделанное после того
+     как дело прошло, не засчитывается: иначе блокировку можно было бы
+     обойти через виджет. */
+  window.kamronApply = function (list) {
+    if (!list || !list.length) return;
+    var changed = false;
+    list.forEach(function (mk) {
+      if (!mk || !mk.id || !mk.dateKey) return;
+      var when = new Date((mk.at || 0) * 1000);
+      if (dateKey(when) !== mk.dateKey) return;
+      var whenMin = when.getHours() * 60 + when.getMinutes();
+      var day = buildDay(new Date(mk.dateKey + 'T12:00:00'));
+      var b = day.find(function (x) { return x.id === mk.id; });
+      if (!b || !isCheckable(b)) return;
+      if (whenMin < b.from || whenMin > b.to + GRACE) return;
+      var m = marks(mk.dateKey);
+      if (m.indexOf(b.id) >= 0) return;
+      m.push(b.id);
+      if (b.taskId) {
+        var tk = S.tasks.find(function (x) { return x.id === b.taskId; });
+        if (tk) tk.done = true;
+      }
+      changed = true;
+    });
+    if (!changed) return;
+    save();
+    renderToday();
+    syncSoon();
+    backupSoon();
+    Pet.flash('cheer', 'Отметил с виджета — засчитано.', 2600);
+  };
+
   /** Забирает то, что надиктовано боту, применяет и подтверждает. */
   function pullChanges() {
     if (!linked()) return;
@@ -1772,6 +1865,7 @@
   }
   syncSoon(true);
   backupSoon(true);
+  nativeSoon(true);
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       /* Уходя в фон, успеваем положить копию: следующего открытия может и не быть. */
@@ -1786,6 +1880,9 @@
     if (t && t !== tab) go(t);
   });
   setInterval(function () { if (tab === 'today') renderToday(); }, 30000);
+  /* Виджету снимок нужен и тогда, когда человек сидит в другой вкладке:
+     минута идёт, блок кончается, а на домашнем экране об этом не знают. */
+  setInterval(function () { nativeSoon(true); }, 30000);
 
   /* Офлайн-режим: страница должна открываться и без сети. */
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

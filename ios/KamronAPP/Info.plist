@@ -48,5 +48,13 @@
 
   <key>UIApplicationSupportsIndirectInputEvents</key>
   <true/>
+
+  <!-- Живое уведомление о текущем блоке на экране блокировки и в
+       Динамическом острове. Без этого ключа ActivityKit молча
+       отказывается запускать уведомление. -->
+  <key>NSSupportsLiveActivities</key>
+  <true/>
+  <key>NSSupportsLiveActivitiesFrequentUpdates</key>
+  <true/>
 </dict>
 </plist>
