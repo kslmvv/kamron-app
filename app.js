@@ -80,6 +80,7 @@
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
     syncSoon();
+    backupSoon();
   }
 
   function toMin(hm) { var p = String(hm).split(':'); return Number(p[0]) * 60 + Number(p[1] || 0); }
@@ -1230,7 +1231,13 @@
         '<input type="password" id="lTok" placeholder="APP_ACCESS_TOKEN" style="width:100%;font:inherit;font-weight:600;border:none;border-radius:13px;padding:11px 12px;background:rgba(255,255,255,.62)">' +
         '</div>' +
         '<button class="btn" id="lTest" style="margin-bottom:10px">Проверить связь</button>' +
-        '<button class="btn ghost" id="lPull">Забрать записи от Jarvis</button>' +
+        '<button class="btn ghost" id="lPull" style="margin-bottom:18px">Забрать записи от Jarvis</button>' +
+        '<div class="sec-head"><span class="cap">Резервная копия</span><small id="lAge">—</small></div>' +
+        '<button class="btn" id="lSave" style="margin-bottom:10px">Сохранить копию сейчас</button>' +
+        '<button class="btn ghost" id="lLoad">Восстановить из копии</button>' +
+        '<p class="empty" style="text-align:left;line-height:1.5">Копия уходит сама при каждом изменении. ' +
+        'Если очистишь историю Safari, открой приложение — оно вернёт данные само, пока ключ на месте. ' +
+        'Если и ключ стёрся, попроси у Jarvis команду <b>/связь</b>: он пришлёт ссылку, которая вернёт всё одним нажатием.</p>';
         '<p class="empty" id="lState" style="text-align:left;line-height:1.5">Через этот адрес бот видит твой день и кладёт сюда то, что ты ему наговорил. Ключ тот же, что в переменной APP_ACCESS_TOKEN на сервере.</p>';
       var u = b.querySelector('#lUrl'), k = b.querySelector('#lTok'), st = b.querySelector('#lState');
       u.value = S.link.url || ''; k.value = S.link.token || '';
@@ -1253,6 +1260,36 @@
       b.querySelector('#lPull').addEventListener('click', function () {
         if (!linked()) { st.textContent = 'Сначала заполни адрес и ключ.'; return; }
         pullChanges(); st.textContent = 'Запрос отправлен.';
+      });
+
+      var age = b.querySelector('#lAge');
+      var showAge = function () {
+        if (!linked()) { age.textContent = 'связь не настроена'; return; }
+        fetch(S.link.url.replace(/\/$/, '') + '/api/backups', { headers: linkHeaders() })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            var list = (d && d['копии']) || [];
+            if (!list.length) { age.textContent = 'копий ещё нет'; return; }
+            var last = list[0];
+            age.textContent = whenText(last.savedAt) + ' · ' + (last['дней'] || 0) + ' ' +
+              plural(last['дней'] || 0, 'день', 'дня', 'дней');
+          })
+          .catch(function () { age.textContent = 'сервер не отвечает'; });
+      };
+      showAge();
+      b.querySelector('#lSave').addEventListener('click', function () {
+        if (!linked()) { st.textContent = 'Сначала заполни адрес и ключ.'; return; }
+        lastBackup = ''; sendBackup();
+        setTimeout(showAge, 900);
+        toast('Копия сохранена.');
+      });
+      b.querySelector('#lLoad').addEventListener('click', function () {
+        if (!linked()) { st.textContent = 'Сначала заполни адрес и ключ.'; return; }
+        /* Восстановление затирает то, что сейчас на телефоне, поэтому
+           спрашиваем прямо — это единственное место, где оно уместно. */
+        confirmSheet('Восстановить из копии?', 'То, что сейчас в приложении, заменится копией с сервера.', function () {
+          restore(false);
+        });
       });
     }
     if (name === 'data') {
@@ -1465,6 +1502,9 @@
      Приложение держит данные у себя в браузере, поэтому бот не может
      писать в него напрямую. Обмен идёт через сервер: сюда уходит снимок
      дня, оттуда забирается очередь того, что надиктовано боту.        */
+  /* Адрес сервера не секрет — секрет только ключ. Держим его в коде,
+     чтобы восстановление после очистки Safari требовало одного ключа. */
+  var DEFAULT_SERVER = 'https://jarvis-production-d62d.up.railway.app';
   var linkState = 'idle';
   function linked() { return !!(S.link && S.link.url && S.link.token); }
   function linkHeaders() { return { 'content-type': 'application/json', authorization: 'Bearer ' + S.link.token }; }
@@ -1593,6 +1633,91 @@
     return false;
   }
 
+  function confirmSheet(title, text, onYes) {
+    closeSheet();
+    var v = document.createElement('div'); v.className = 'veil'; v.addEventListener('click', closeSheet);
+    var sh = document.createElement('div'); sh.className = 'sheet';
+    sh.innerHTML = '<div class="grab"></div><h3></h3>' +
+      '<p style="margin:-8px 0 18px;font-size:14px;font-weight:600;color:var(--ink-soft);line-height:1.5"></p>' +
+      '<button class="btn" id="cYes" style="margin-bottom:10px">Да</button>' +
+      '<button class="btn ghost" id="cNo">Отмена</button>';
+    sh.querySelector('h3').textContent = title;
+    sh.querySelector('p').textContent = text;
+    document.body.appendChild(v); document.body.appendChild(sh); sheetNode = sh;
+    sh.querySelector('#cYes').addEventListener('click', function () { closeSheet(); onYes(); });
+    sh.querySelector('#cNo').addEventListener('click', closeSheet);
+  }
+
+  /* ══ Резервная копия ═══════════════════════════════════════════════
+     История Safari стирается одним движением, и вместе с ней ушло бы всё
+     накопленное. Поэтому состояние целиком уезжает на сервер при каждом
+     сохранении, а пустое приложение само забирает копию обратно.      */
+  var backupTimer = null, lastBackup = '';
+
+  function backupSoon(now) {
+    if (!linked()) return;
+    clearTimeout(backupTimer);
+    backupTimer = setTimeout(sendBackup, now ? 0 : 10000);
+  }
+  function sendBackup() {
+    if (!linked()) return;
+    var body = JSON.stringify(S);
+    if (body === lastBackup) return;
+    fetch(S.link.url.replace(/\/$/, '') + '/api/backup', {
+      method: 'POST', headers: linkHeaders(), body: body
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d) lastBackup = body; })
+      .catch(function () {});
+  }
+
+  /** Состояние считается пустым, когда в нём нет ничего своего. */
+  function blank() {
+    var marks = Object.keys(S.done || {}).some(function (k) { return (S.done[k] || []).length; });
+    var habitLog = (S.habits || []).some(function (h) { return Object.keys(h.log || {}).length; });
+    return !marks && !habitLog && !(S.tasks || []).length && !(S.notes || []).length && !(S.chat || []).length;
+  }
+
+  function whenText(iso) {
+    try {
+      return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return '—'; }
+  }
+
+  function restore(silent) {
+    if (!linked()) return Promise.resolve(false);
+    return fetch(S.link.url.replace(/\/$/, '') + '/api/backup', { headers: linkHeaders() })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var copy = d && d.state;
+        if (!copy || typeof copy !== 'object') return false;
+        var link = S.link;           // ключ берём свой: копия могла быть снята до его ввода
+        Object.keys(copy).forEach(function (key) { S[key] = copy[key]; });
+        S.link = link;
+        lastBackup = '';
+        save();
+        renderToday();
+        if (!silent) toast('Восстановлено из копии от ' + whenText(d.savedAt) + '.');
+        return true;
+      })
+      .catch(function () { return false; });
+  }
+
+  /* Ключ можно передать ссылкой: открыл — и приложение само вернуло всё.
+     Из адреса он сразу убирается, чтобы не остаться в истории. */
+  function bootstrapLink() {
+    var key = /[#&]k=([^&]*)/.exec(location.hash || '');
+    if (!key || !key[1]) return false;
+    var server = /[#&]s=([^&]*)/.exec(location.hash || '');
+    S.link = {
+      url: server ? decodeURIComponent(server[1]) : S.link.url || DEFAULT_SERVER,
+      token: decodeURIComponent(key[1])
+    };
+    save();
+    try { history.replaceState(null, '', location.pathname + '#today'); } catch (e) {}
+    return true;
+  }
+
   /* ── Навигация ────────────────────────────────────────────────────── */
   function go(name) {
     tab = name; closeSheet();
@@ -1633,12 +1758,28 @@
     pullChanges();
   }
 
+  var fromLink = bootstrapLink();
   renderToday();
-  go(TABS[location.hash] || 'today');
+  go(fromLink ? 'today' : TABS[location.hash] || 'today');
   pullSoon();
+
+  /* Приложение открылось пустым, а копия на сервере есть — значит историю
+     Safari стёрли. Возвращаем молча: объяснять нечего, данные на месте. */
+  if (linked() && blank()) {
+    restore(true).then(function (ok) {
+      if (ok) toast('Данные восстановлены из копии.');
+    });
+  }
   syncSoon(true);
+  backupSoon(true);
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) { pullSoon(); syncSoon(true); }
+    if (document.hidden) {
+      /* Уходя в фон, успеваем положить копию: следующего открытия может и не быть. */
+      backupSoon(true);
+      return;
+    }
+    pullSoon();
+    syncSoon(true);
   });
   window.addEventListener('hashchange', function () {
     var t = TABS[location.hash];

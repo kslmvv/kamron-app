@@ -502,6 +502,76 @@ ok(
 await page.waitForTimeout(300);
 fake.close();
 
+part('Резервная копия');
+// Сервер копий подделываем тем же сервером связи.
+let saved = null;
+const backup = createServer((req, res) => {
+  const cors = {
+    'access-control-allow-origin': '*',
+    'access-control-allow-headers': 'content-type, authorization',
+    'content-type': 'application/json'
+  };
+  if (req.method === 'OPTIONS') return res.writeHead(204, cors).end();
+  let body = '';
+  req.on('data', c => (body += c));
+  req.on('end', () => {
+    if (req.url === '/api/backup' && req.method === 'POST') {
+      saved = JSON.parse(body || '{}');
+      return res.writeHead(200, cors).end('{"ok":true,"savedAt":"2026-10-15T10:00:00.000Z"}');
+    }
+    if (req.url === '/api/backup') {
+      return saved
+        ? res.writeHead(200, cors).end(JSON.stringify({ savedAt: '2026-10-15T10:00:00.000Z', state: saved }))
+        : res.writeHead(404, cors).end('{}');
+    }
+    if (req.url === '/api/backups') {
+      return res
+        .writeHead(200, cors)
+        .end(JSON.stringify({ копии: saved ? [{ savedAt: '2026-10-15T10:00:00.000Z', дней: 3 }] : [] }));
+    }
+    if (req.url === '/api/snapshot' && req.method === 'POST')
+      return res.writeHead(200, cors).end('{"ok":true}');
+    if (req.url === '/api/changes') return res.writeHead(200, cors).end('{"изменения":[]}');
+    res.writeHead(404, cors).end('{}');
+  });
+});
+await new Promise(r => backup.listen(8195, '127.0.0.1', r));
+
+const copyPage = await context.newPage();
+await copyPage.goto(base);
+await copyPage.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  s.link = { url: 'http://127.0.0.1:8195', token: 'test' };
+  s.tasks = [{ id: 'keep', title: 'Не потерять', date: '2026-10-15', time: '', done: false }];
+  s.notes = [{ id: 'n1', ts: Date.now(), body: 'Важная мысль' }];
+  localStorage.setItem('den-kamrona-v3', JSON.stringify(s));
+});
+await copyPage.reload();
+await copyPage.waitForTimeout(1400);
+ok('копия ушла на сервер', !!saved && Array.isArray(saved.tasks));
+ok('в копии есть задачи и заметки', !!saved && saved.tasks.length === 1 && saved.notes.length === 1);
+
+// Чистим «Safari»: остаётся только ключ связи, как после ссылки восстановления.
+await copyPage.evaluate(() => localStorage.clear());
+await copyPage.goto(base + '#k=test&s=' + encodeURIComponent('http://127.0.0.1:8195'));
+await copyPage.reload();
+await copyPage.waitForTimeout(1600);
+const back = await copyPage.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3') || '{}');
+  return {
+    tasks: (s.tasks || []).length,
+    notes: (s.notes || []).length,
+    token: s.link && s.link.token,
+    hash: location.hash
+  };
+});
+ok('ссылка с ключом настроила связь', back.token === 'test');
+ok('ключ убран из адреса', !back.hash.includes('k='));
+ok('задачи вернулись из копии', back.tasks === 1);
+ok('заметки вернулись из копии', back.notes === 1);
+await copyPage.close();
+backup.close();
+
 console.log('\n' + '─'.repeat(46));
 if (errors.length) {
   console.log('Ошибки в консоли:');

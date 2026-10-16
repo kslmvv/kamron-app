@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import tempfile
+import urllib.parse
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -33,6 +34,7 @@ HELP = (
     "записать задачу или дело по времени, отметить сделанное.\n\n"
     "/план — что сегодня\n"
     "/расход — сколько потрачено за сутки\n"
+    "/связь — ссылка, которая вернёт данные в приложение\n"
     "/помощь — это сообщение"
 )
 
@@ -159,6 +161,27 @@ async def on_text(chat: int, text: str) -> None:
             chat,
             f"За сутки потрачено ${state.cost:.3f} из ${config.max_day_cost:.2f}.\n"
             f"Сообщений: {state.messages}. Остаток лимита ${state.left():.3f}.",
+        )
+        return
+
+    if low in ("/связь", "/link", "/копия"):
+        # Ключ внутри ссылки — поэтому её даём только по прямой просьбе и
+        # сразу говорим, чем она является.
+        if not config.jarvis_token:
+            await telegram.send(chat, "Ключ сервера не задан, ссылку собрать не из чего.")
+            return
+        link = (
+            config.app_url.rstrip("/")
+            + "/#k="
+            + urllib.parse.quote(config.jarvis_token, safe="")
+            + "&s="
+            + urllib.parse.quote(config.jarvis_url.rstrip("/"), safe="")
+        )
+        await telegram.send(
+            chat,
+            "Ссылка восстановления:\n" + link +
+            "\n\nОткрой её на телефоне — приложение подхватит ключ и вернёт данные "
+            "из последней копии. В ссылке лежит ключ доступа, поэтому не пересылай её никому.",
         )
         return
 

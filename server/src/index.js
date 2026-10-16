@@ -15,6 +15,7 @@ import { github } from './routes/github.js';
 import { railway } from './routes/railway.js';
 import { saveSnapshot, readSnapshot, snapshotAge } from './snapshot.js';
 import { addChange, listChanges, ackChanges } from './changes.js';
+import { saveBackup, readBackup, listBackups, backupAge } from './backup.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -54,7 +55,8 @@ app.get('/api/health', (req, res) => {
     configured: !!config.accessToken,
     capabilities: capabilities(),
     расход: spendReport(),
-    снимокМинутНазад: snapshotAge()
+    снимокМинутНазад: snapshotAge(),
+    копияМинутНазад: backupAge()
   });
 });
 
@@ -98,6 +100,29 @@ app.get('/api/changes', (req, res) => {
 
 app.post('/api/changes/ack', (req, res) => {
   res.json({ ok: true, применено: ackChanges(req.body?.ids) });
+});
+
+/**
+ * Резервные копии. Историю Safari на телефоне легко стереть, а вместе с
+ * ней уходит всё накопленное приложением, поэтому копия нужна не «когда-
+ * нибудь», а по умолчанию.
+ */
+app.post('/api/backup', (req, res, next) => {
+  try {
+    res.json({ ok: true, ...saveBackup(req.body) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/backup', (req, res) => {
+  const copy = readBackup(req.query?.имя || req.query?.name);
+  if (!copy) return res.status(404).json({ error: 'Копий ещё нет' });
+  res.json(copy);
+});
+
+app.get('/api/backups', (req, res) => {
+  res.json({ копии: listBackups(), возрастМинут: backupAge() });
 });
 
 app.use('/api/jarvis', jarvis);

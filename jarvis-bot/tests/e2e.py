@@ -294,6 +294,14 @@ async def run() -> None:
     ok("длинное отклонено", "длинное" in sent["messages"][-1].lower())
     ok("длинное не распознавалось", sent["transcribed"] == 1)
 
+    print("\nСсылка восстановления")
+    await bot.handle({"update_id": 8, "message": {"chat": {"id": 777}, "text": "/связь"}})
+    link = sent["messages"][-1]
+    ok("ссылка содержит адрес приложения", config.app_url.rstrip("/") in link)
+    ok("ссылка несёт ключ", "#k=" in link and config.jarvis_token in link)
+    ok("ссылка несёт адрес сервера", "&s=" in link)
+    ok("предупреждение про ключ на месте", "не пересылай" in link)
+
     print("\nНапоминания по ходу дня")
     from datetime import datetime
     from zoneinfo import ZoneInfo

@@ -28,6 +28,9 @@ class Config:
     tts_model = os.environ.get("TTS_MODEL", "gpt-4o-mini-tts")
     tts_voice = os.environ.get("TTS_VOICE", "onyx")
 
+    # Куда ведёт ссылка восстановления.
+    app_url = os.environ.get("APP_URL", "https://kslmvv.github.io/kamron-app/")
+
     # Приложение держит данные в браузере, поэтому обмен идёт через сервер.
     jarvis_url = os.environ.get("JARVIS_URL", "")
     jarvis_token = os.environ.get("JARVIS_TOKEN", "")
