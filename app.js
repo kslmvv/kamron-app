@@ -87,6 +87,13 @@
     var x = ((Math.round(m) % 1440) + 1440) % 1440;
     return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0');
   }
+  /** Короткая длительность для колонки времени: «1 ч 10», «55 мин». */
+  function shortSpan(min) {
+    var m = Math.max(0, Math.round(min));
+    if (m < 60) return m + ' мин';
+    var h = Math.floor(m / 60), r = m % 60;
+    return r ? h + ' ч ' + r : h + ' ч';
+  }
   function human(min) {
     var m = Math.max(0, Math.round(min));
     if (m < 60) return m + ' мин';
@@ -560,17 +567,28 @@
       row.className = 'row glass' + (can ? ' tap' : '') + (st === 'done' ? ' on' : '') + (st === 'missed' ? ' missed' : '') +
         (st === 'early' ? ' early' : '') + (isToday() && live === b ? ' live' : '');
       row.style.animationDelay = Math.min(i * 26, 300) + 'ms';
-      var tag = isToday() && live === b ? '<span class="tag now">сейчас</span>' :
-        st === 'missed' ? '<span class="tag miss">упущено</span>' :
-        soon ? '<span class="tag soon">успей</span>' : '';
+      /* Время — отдельной колонкой справа, а не хвостом из дат и точек.
+         Сверху крупное число, под ним подпись: у текущего дела это остаток,
+         у остальных — начало и длительность. Строка из «08:30 — 09:40 ·
+         ауд. A-303 · 1 ч 10 мин» не читалась и ломалась на две. */
+      var when;
+      if (b.free) when = { big: '—', sub: 'без времени' };
+      else if (isToday() && live === b && can) when = { big: shortSpan(b.to - t.nowMin), sub: 'осталось', cls: ' is-now' };
+      else if (isToday() && live === b) when = { big: toHm(b.to), sub: 'до', cls: ' is-now' };
+      else if (st === 'done') when = { big: toHm(b.from), sub: 'готово', cls: ' is-done' };
+      else if (st === 'missed') when = { big: toHm(b.from), sub: 'упущено', cls: ' is-miss' };
+      else when = { big: toHm(b.from), sub: shortSpan(b.to - b.from) };
+      var tag = soon && st === 'open' ? '<span class="tag soon">успей</span>' : '';
       var btn = !can ? '<span class="mark auto" aria-hidden="true"></span>'
         : st === 'missed' ? '<button type="button" class="mark missed" aria-label="Упущено"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'
         : st === 'early' ? '<button type="button" class="mark locked" aria-label="Ещё не время"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg></button>'
         : '<button type="button" class="mark" aria-label="Отметить"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></button>';
       row.innerHTML = '<span class="tile ' + b.tile + '">' + b.icon + '</span>' +
-        '<div class="meat"><b>' + esc(b.name) + tag + '</b><small></small></div>' + btn;
-      row.querySelector('small').textContent = b.free ? 'без времени'
-        : toHm(b.from) + ' — ' + toHm(b.to) + (b.room ? ' · ауд. ' + b.room : '') + ' · ' + human(b.to - b.from);
+        '<div class="meat"><b>' + esc(b.name) + tag + '</b>' +
+        (b.room ? '<small>ауд. ' + esc(b.room) + '</small>' : '') + '</div>' +
+        '<span class="when' + (when.cls || '') + '"><b></b><small></small></span>' + btn;
+      row.querySelector('.when b').textContent = when.big;
+      row.querySelector('.when small').textContent = when.sub;
       if (can) {
         /* Нажимается вся карточка — в неё легче попасть пальцем, чем в кружок. */
         var mk = row.querySelector('.mark');

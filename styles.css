@@ -813,9 +813,9 @@ header {
 .row {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 10px;
   border-radius: 22px;
-  padding: 13px 15px;
+  padding: 12px 14px;
   animation: rowIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   width: 100%;
   text-align: left;
@@ -862,9 +862,9 @@ header {
   z-index: 1;
 }
 .tile {
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
   flex: none;
   display: grid;
   place-items: center;
@@ -897,6 +897,9 @@ header {
 }
 .meat b {
   display: block;
+  /* Длинные названия пар не должны налезать на колонку времени, но
+     обычные слова переносятся целиком: break-word, а не anywhere. */
+  overflow-wrap: break-word;
   font-size: 16px;
   font-weight: 700;
   line-height: 1.25;
@@ -933,8 +936,8 @@ header {
 }
 
 .mark {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   flex: none;
   display: grid;
@@ -2174,4 +2177,77 @@ nav button.active svg {
 }
 .adder input[type='number'] {
   width: 58px;
+}
+
+/* ── Колонка времени ────────────────────────────────────────────────────
+   Раньше время, аудитория и длительность шли одной строкой через точки:
+   она не читалась и на узком экране рвалась пополам. Теперь это правый
+   столбец — крупное число и подпись под ним, одинаково у всех строк. */
+.when {
+  flex: none;
+  width: 56px;
+  text-align: right;
+  line-height: 1.15;
+}
+.when b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.when small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
+}
+.when.is-now b {
+  color: #5f7212;
+}
+.when.is-now small {
+  color: #6f7a2e;
+}
+.when.is-done small {
+  color: var(--lime-deep);
+}
+.row.missed .when b {
+  color: #5e1607;
+}
+.when.is-miss small {
+  color: #a82a0c;
+}
+.row.early .when b,
+.row.early .when small {
+  color: var(--ink-faint);
+}
+
+/* На очень узких экранах (320 пикселей) колонка времени и плитка съедают
+   место у названия, и слова начинают переноситься по буквам. Сжимаем всё
+   понемногу, чтобы название снова помещалось целиком. */
+@media (max-width: 360px) {
+  .row {
+    gap: 8px;
+    padding: 12px;
+  }
+  .tile {
+    width: 38px;
+    height: 38px;
+    font-size: 19px;
+  }
+  .when {
+    width: 50px;
+  }
+  .when b {
+    font-size: 13.5px;
+  }
+  .mark {
+    width: 36px;
+    height: 36px;
+  }
+  .meat b {
+    font-size: 15px;
+  }
 }
