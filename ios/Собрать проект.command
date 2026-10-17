@@ -41,9 +41,25 @@ if ! command -v xcodegen >/dev/null 2>&1; then
     export PATH="$(dirname "$BREW"):$PATH"
 fi
 
+# Ключи для виджета лежат вне репозитория — создаём пустую заготовку,
+# иначе сборка не найдёт файл. Заполнять её нужно только если виджет
+# берёт день с сервера; как это настроить, написано в README.md.
+if [ ! -f Shared/Secrets.swift ]; then
+    cp Shared/Secrets.example.swift Shared/Secrets.swift
+    echo "Создал Shared/Secrets.swift — заполните, если нужен виджет без App Group."
+fi
+
+# Общий ящик включается отдельным описанием: с бесплатной учётной
+# записью Apple его не подписывает, и сборка падает на подписи.
+SPEC="project.yml"
+if [ "$1" = "--app-group" ] || [ "$KAMRON_APP_GROUP" = "1" ]; then
+    SPEC="project.appgroup.yml"
+    echo "Собираю с общим ящиком (App Group)."
+fi
+
 echo
-echo "Собираю файл проекта из project.yml…"
-if ! xcodegen generate; then
+echo "Собираю файл проекта из $SPEC…"
+if ! xcodegen generate --spec "$SPEC"; then
     echo
     echo "Сборка проекта не прошла. Текст ошибки выше — пришлите его мне."
     read -r -p "Нажмите Enter, чтобы закрыть."

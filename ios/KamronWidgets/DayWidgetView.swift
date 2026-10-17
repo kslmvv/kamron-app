@@ -9,7 +9,7 @@ struct DayWidgetView: View {
         let state = entry.state
 
         if state.blocked {
-            Notice(text: "Виджету нужен общий доступ к данным приложения. Включается в Xcode: App Groups.")
+            Notice(text: "Виджет не видит данных. Включите App Groups в Xcode или впишите ключ в Secrets.swift — тогда день придёт с сервера.")
         } else if !state.fresh {
             Notice(text: "Откройте Kamron APP — виджет возьмёт сегодняшний день.")
         } else if family == .systemSmall {

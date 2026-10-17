@@ -16,6 +16,7 @@ import { railway } from './routes/railway.js';
 import { saveSnapshot, readSnapshot, snapshotAge } from './snapshot.js';
 import { addChange, listChanges, ackChanges } from './changes.js';
 import { saveBackup, readBackup, listBackups, backupAge } from './backup.js';
+import { saveWidgetDay, readWidgetDay, widgetAuth } from './widget.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -60,7 +61,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+/**
+ * День для виджета. Отдельный ключ и отдельный маршрут — до общего
+ * требования ключа ниже, иначе виджету пришлось бы носить главный ключ.
+ */
+app.get('/api/widget', widgetAuth, rateLimit(120), (req, res) => {
+  const day = readWidgetDay();
+  if (!day) return res.status(404).json({ error: 'Приложение ещё не присылало день' });
+  res.json(day);
+});
+
+/** Отметка, нажатая в виджете. Ложится в ту же очередь, что и надиктованное. */
+app.post('/api/widget/mark', widgetAuth, rateLimit(120), (req, res, next) => {
+  try {
+    const { id, dateKey, at } = req.body || {};
+    res.json({ ok: true, change: addChange('mark', { id, dateKey, at: at || Date.now() / 1000 }) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use('/api', requireToken, rateLimit(60));
+
+/** Страница кладёт сюда день в том виде, в каком его рисует виджет. */
+app.post('/api/widget', (req, res) => {
+  const day = req.body;
+  if (!day || typeof day !== 'object' || Array.isArray(day)) {
+    return res.status(400).json({ error: 'Нужен объект дня' });
+  }
+  res.json({ ok: true, savedAt: saveWidgetDay(day).savedAt });
+});
 
 /**
  * Снимок состояния приложения. Приложение присылает его при сохранении,

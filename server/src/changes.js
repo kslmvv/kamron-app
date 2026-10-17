@@ -40,7 +40,11 @@ const KINDS = {
   task: ['title'],
   routine: ['time', 'title'],
   note: ['body'],
-  complete: ['title']
+  complete: ['title'],
+  // Отметка из виджета: он знает точный идентификатор блока, поэтому
+  // угадывать по названию не нужно. Время нажатия обязательно —
+  // по нему приложение проверит, что отметка сделана вовремя.
+  mark: ['id', 'dateKey']
 };
 
 export function addChange(kind, payload) {

@@ -29,8 +29,18 @@ struct MarkDoneIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
-        Store.addMark(PendingMark(id: blockID, dateKey: dateKey, at: Date().timeIntervalSince1970))
+        let mark = PendingMark(id: blockID, dateKey: dateKey, at: Date().timeIntervalSince1970)
+
+        // Блок закрываем у себя сразу: иначе нажатие выглядит пустым.
         Store.markDoneLocally(blockID)
+
+        if Store.shared {
+            Store.addMark(mark)
+        } else if await WidgetFeed.send(mark: mark) == false {
+            // Сеть подвела — пусть заявка полежит до открытия приложения.
+            Store.addMark(mark)
+        }
+
         WidgetCenter.shared.reloadAllTimelines()
         return .result()
     }

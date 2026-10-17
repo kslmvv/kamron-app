@@ -1,0 +1,24 @@
+# Сборка с общим ящиком (App Group).
+#
+# Этот путь лучше обычного: день не выходит в сеть, виджет работает
+# офлайн и обновляется мгновенно. Но Apple подписывает App Group не
+# всякой учётной записи — если сборка падает на подписи, собирайте
+# обычным project.yml, и виджет возьмёт день с сервера.
+#
+#     xcodegen generate --spec project.appgroup.yml
+#
+# Перед этим группу group.com.kslmvv.kamronapp нужно завести на
+# developer.apple.com → Identifiers → App Groups.
+include:
+  - project.yml
+
+targets:
+  KamronAPP:
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: KamronAPP/KamronAPP.entitlements
+
+  KamronWidgetsExtension:
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: KamronWidgets/KamronWidgets.entitlements

@@ -1556,6 +1556,20 @@
     }).then(function (r) {
       if (r.ok) { lastSent = body; linkState = 'ok'; } else linkState = 'fail';
     }).catch(function () { linkState = 'fail'; });
+    sendWidgetDay();
+  }
+
+  /* Виджету на айфоне день может прийти двумя путями: через общий ящик
+     на устройстве или, если Apple его не дала, через этот сервер.
+     Второй путь не стоит ничего, поэтому держим его всегда открытым. */
+  var widgetSent = '';
+  function sendWidgetDay() {
+    if (!linked()) return;
+    var body = JSON.stringify(nativeDay());
+    if (body === widgetSent) return;
+    fetch(S.link.url.replace(/\/$/, '') + '/api/widget', {
+      method: 'POST', headers: linkHeaders(), body: body
+    }).then(function (r) { if (r.ok) widgetSent = body; }).catch(function () {});
   }
 
   /* ── Мост в приложение на айфоне ──────────────────────────────────
@@ -1621,27 +1635,29 @@
      правилам, что и в самом приложении. Нажатие, сделанное после того
      как дело прошло, не засчитывается: иначе блокировку можно было бы
      обойти через виджет. */
+  function applyWidgetMark(mk) {
+    if (!mk || !mk.id || !mk.dateKey) return false;
+    var when = new Date((mk.at || 0) * 1000);
+    if (dateKey(when) !== mk.dateKey) return false;
+    var whenMin = when.getHours() * 60 + when.getMinutes();
+    var day = buildDay(new Date(mk.dateKey + 'T12:00:00'));
+    var b = day.find(function (x) { return x.id === mk.id; });
+    if (!b || !isCheckable(b)) return false;
+    if (whenMin < b.from || whenMin > b.to + GRACE) return false;
+    var m = marks(mk.dateKey);
+    if (m.indexOf(b.id) >= 0) return false;
+    m.push(b.id);
+    if (b.taskId) {
+      var tk = S.tasks.find(function (x) { return x.id === b.taskId; });
+      if (tk) tk.done = true;
+    }
+    return true;
+  }
+
   window.kamronApply = function (list) {
     if (!list || !list.length) return;
     var changed = false;
-    list.forEach(function (mk) {
-      if (!mk || !mk.id || !mk.dateKey) return;
-      var when = new Date((mk.at || 0) * 1000);
-      if (dateKey(when) !== mk.dateKey) return;
-      var whenMin = when.getHours() * 60 + when.getMinutes();
-      var day = buildDay(new Date(mk.dateKey + 'T12:00:00'));
-      var b = day.find(function (x) { return x.id === mk.id; });
-      if (!b || !isCheckable(b)) return;
-      if (whenMin < b.from || whenMin > b.to + GRACE) return;
-      var m = marks(mk.dateKey);
-      if (m.indexOf(b.id) >= 0) return;
-      m.push(b.id);
-      if (b.taskId) {
-        var tk = S.tasks.find(function (x) { return x.id === b.taskId; });
-        if (tk) tk.done = true;
-      }
-      changed = true;
-    });
+    list.forEach(function (mk) { if (applyWidgetMark(mk)) changed = true; });
     if (!changed) return;
     save();
     renderToday();
@@ -1706,6 +1722,9 @@
       S.notes.push({ id: uid(), ts: Date.now(), body: body });
       S.notes = S.notes.slice(-50);
       return true;
+    }
+    if (kind === 'mark') {
+      return applyWidgetMark({ id: p.id, dateKey: p.dateKey, at: p.at });
     }
     if (kind === 'complete') {
       var want = String(p.title || '').trim().toLowerCase();

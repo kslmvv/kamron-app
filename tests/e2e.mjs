@@ -431,7 +431,7 @@ await page.waitForTimeout(300);
 part('Связь с Jarvis');
 // Поддельный сервер приложения: проверяем, что снимок уходит, а надиктованное
 // боту приходит обратно и применяется.
-const got = { snapshots: [], acked: [] };
+const got = { snapshots: [], acked: [], widget: [] };
 let queue = [
   { id: 'c1', kind: 'task', data: { title: 'Позвонить в деканат', date: '2026-10-15', time: '' } },
   { id: 'c2', kind: 'note', data: { body: 'Завтра занять очередь с утра' } }
@@ -450,6 +450,10 @@ const fake = createServer((req, res) => {
       return res.writeHead(200, cors).end(JSON.stringify({ ok: true, снимокМинутНазад: 3 }));
     if (req.url === '/api/snapshot' && req.method === 'POST') {
       got.snapshots.push(JSON.parse(body || '{}'));
+      return res.writeHead(200, cors).end('{"ok":true}');
+    }
+    if (req.url === '/api/widget' && req.method === 'POST') {
+      got.widget.push(JSON.parse(body || '{}'));
       return res.writeHead(200, cors).end('{"ok":true}');
     }
     if (req.url === '/api/changes' && req.method === 'GET') {
@@ -485,6 +489,14 @@ if (got.snapshots.length) {
   ok('в снимке есть завтрашний план', Array.isArray(snap.routineTomorrow));
 }
 ok('надиктованное применено и подтверждено', got.acked.length === 2);
+ok('день для виджета ушёл на сервер', got.widget.length >= 1);
+if (got.widget.length) {
+  const wd = got.widget[got.widget.length - 1];
+  ok(
+    'в дне для виджета есть блоки и настроение',
+    Array.isArray(wd.blocks) && wd.blocks.length > 0 && typeof wd.mood === 'string'
+  );
+}
 ok(
   'задача от бота появилась в плане',
   await page.evaluate(() =>

@@ -20,3 +20,6 @@ __pycache__/
 ios/*.xcodeproj
 ios/DerivedData/
 ios/build/
+
+# Ключ виджета для сборки в Xcode: в репозиторий не попадает.
+ios/Shared/Secrets.swift

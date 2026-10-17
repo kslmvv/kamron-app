@@ -7,20 +7,29 @@ struct DayEntry: TimelineEntry {
     let date: Date
     let snapshot: DaySnapshot?
     let pose: PetPose
-    /// Группа не подписана — об этом надо сказать прямо, а не рисовать пустоту.
+    /// Пути к данным нет вовсе — об этом надо сказать прямо, а не рисовать пустоту.
     let blocked: Bool
 }
 
 // MARK: - Поставщик кадров
 
 struct DayProvider: TimelineProvider {
+    /// День приходит одним из двух путей. Общий ящик лучше: данные не
+    /// выходят в сеть и виджет работает офлайн. Если Apple его не дала,
+    /// берём день с сервера — страница кладёт его туда сама.
+    private var viaNetwork: Bool { !Store.shared && WidgetFeed.isConfigured }
+    private var homeless: Bool { !Store.shared && !WidgetFeed.isConfigured }
+
     func placeholder(in context: Context) -> DayEntry {
         DayEntry(date: Date(), snapshot: .sample, pose: .still, blocked: false)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DayEntry) -> Void) {
-        let snap = context.isPreview ? DaySnapshot.sample : Store.snapshot()
-        completion(DayEntry(date: Date(), snapshot: snap, pose: .still, blocked: !Store.available))
+        if context.isPreview {
+            completion(DayEntry(date: Date(), snapshot: .sample, pose: .still, blocked: false))
+            return
+        }
+        completion(DayEntry(date: Date(), snapshot: Store.snapshot(), pose: .still, blocked: homeless))
     }
 
     /// Кадры на час вперёд, по одному в минуту.
@@ -29,20 +38,31 @@ struct DayProvider: TimelineProvider {
     /// показывает готовые кадры сама. Через час виджет попросит следующую
     /// порцию — к этому времени и данные успеют обновиться.
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
-        let snap = Store.snapshot()
-        let blocked = !Store.available
+        guard viaNetwork else {
+            completion(hour(with: Store.snapshot()))
+            return
+        }
+        Task {
+            let fetched = await WidgetFeed.day()
+            completion(hour(with: fetched))
+        }
+    }
+
+    private func hour(with snapshot: DaySnapshot?) -> Timeline<DayEntry> {
         let now = Date()
         let start = Calendar.current.date(bySetting: .second, value: 0, of: now) ?? now
-
         var entries: [DayEntry] = []
         for step in 0..<60 {
-            let date = start.addingTimeInterval(TimeInterval(step * 60))
             entries.append(
-                DayEntry(date: date, snapshot: snap, pose: PetPose.at(step), blocked: blocked)
+                DayEntry(
+                    date: start.addingTimeInterval(TimeInterval(step * 60)),
+                    snapshot: snapshot,
+                    pose: PetPose.at(step),
+                    blocked: homeless
+                )
             )
         }
-
-        completion(Timeline(entries: entries, policy: .atEnd))
+        return Timeline(entries: entries, policy: .atEnd)
     }
 }
 

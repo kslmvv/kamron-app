@@ -30,6 +30,8 @@ targets:
         excludes:
           - Info.plist
       - path: Shared
+        excludes:
+          - Secrets.example.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kslmvv.kamronapp
@@ -43,9 +45,10 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_USER_SCRIPT_SANDBOXING: YES
-        # Общий ящик с виджетом. Требует платной учётной записи
-        # разработчика: на бесплатной группа не подписывается.
-        CODE_SIGN_ENTITLEMENTS: KamronAPP/KamronAPP.entitlements
+        # Общего ящика здесь нет нарочно: с бесплатной учётной записью
+        # Apple не подписывает App Group, и сборка падает ещё до запуска.
+        # Виджет в этом случае берёт день с сервера. Есть платная учётная
+        # запись — собирайте из project.appgroup.yml, там ящик включён.
     dependencies:
       # Расширение кладётся внутрь приложения — иначе виджета не будет
       # в списке на устройстве.
@@ -62,13 +65,14 @@ targets:
       # Модель дня, хранилище и питомец общие с приложением: два отдельных
       # описания одного и того же разъезжаются при первой же правке.
       - path: Shared
+        excludes:
+          - Secrets.example.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kslmvv.kamronapp.widgets
         PRODUCT_NAME: KamronWidgets
         INFOPLIST_FILE: KamronWidgets/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: KamronWidgets/KamronWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
     dependencies:

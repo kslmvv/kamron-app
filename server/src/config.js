@@ -8,6 +8,9 @@ const list = value =>
 export const config = {
   port: Number(process.env.PORT) || 8080,
   accessToken: process.env.APP_ACCESS_TOKEN || '',
+  // Отдельный ключ для виджета на айфоне: он лежит в собранном
+  // приложении, поэтому открывать им переписку и копии нельзя.
+  widgetToken: process.env.WIDGET_TOKEN || '',
   allowedOrigins: list(process.env.ALLOWED_ORIGINS),
   provider: (process.env.LLM_PROVIDER || 'anthropic').toLowerCase(),
   anthropicKey: process.env.ANTHROPIC_API_KEY || '',
