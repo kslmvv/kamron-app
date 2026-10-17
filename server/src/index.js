@@ -16,7 +16,7 @@ import { railway } from './routes/railway.js';
 import { saveSnapshot, readSnapshot, snapshotAge } from './snapshot.js';
 import { addChange, listChanges, ackChanges } from './changes.js';
 import { saveBackup, readBackup, listBackups, backupAge } from './backup.js';
-import { saveWidgetDay, readWidgetDay, widgetAuth } from './widget.js';
+import { saveWidgetDay, readWidgetDay, widgetAuth, widgetKey } from './widget.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -82,6 +82,17 @@ app.post('/api/widget/mark', widgetAuth, rateLimit(120), (req, res, next) => {
 });
 
 app.use('/api', requireToken, rateLimit(60));
+
+/**
+ * Ключ виджета для сборки на маке. Отдаётся только по главному ключу —
+ * тому самому, что лежит в ссылке восстановления. Благодаря этому
+ * придумывать и вписывать ещё один секрет руками не нужно.
+ */
+app.get('/api/widget/key', (req, res) => {
+  // Имя латиницей дублируется нарочно: ключ вынимает скрипт сборки на
+  // маке обычным sed, и кириллица в имени поля там только мешает.
+  res.json({ ключ: widgetKey(), key: widgetKey() });
+});
 
 /** Страница кладёт сюда день в том виде, в каком его рисует виджет. */
 app.post('/api/widget', (req, res) => {
