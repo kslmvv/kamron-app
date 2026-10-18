@@ -26,41 +26,107 @@ enum PetPose: Int, CaseIterable {
     }
 }
 
-/// Тот же питомец, что на главной странице: скруглённый ромб с лицом.
+/// Питомец: скруглённый ромб с лицом, как на главной странице.
+///
+/// Рисуется объёмным нарочно. На иконке размером с ноготь плоское пятно
+/// с двумя точками читается как значок, а не как живое существо, — а весь
+/// смысл питомца в том, что на него смотрят как на кого-то.
 struct PetFace: View {
     var mood: PetMood = .calm
     var pose: PetPose = .still
-    /// Цвет тела. Лицо всегда тёмное — так оно читается на любом теле.
+    /// Основной цвет тела. Лицо всегда тёмное — так оно читается на любом.
     var skin: Color = .white
     var size: CGFloat = 44
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.21, style: .continuous)
-                .fill(skin)
-                .frame(width: size * 0.68, height: size * 0.68)
-                .rotationEffect(.degrees(45))
-
+            shadow
+            crest
+            bodyShape
+            gloss
             face
         }
         .frame(width: size, height: size)
-        .rotationEffect(.degrees(pose == .tilt ? 7 : 0))
+        .rotationEffect(.degrees(pose == .tilt ? 6 : 0))
         .animation(.spring(response: 0.5, dampingFraction: 0.72), value: pose)
         .animation(.spring(response: 0.5, dampingFraction: 0.72), value: mood)
+    }
+
+    // MARK: - Тело
+
+    /// Тень отрывает питомца от фона: без неё он выглядит наклейкой.
+    private var shadow: some View {
+        Ellipse()
+            .fill(Color.black.opacity(0.18))
+            .frame(width: size * 0.46, height: size * 0.10)
+            .offset(y: size * 0.40)
+            .blur(radius: size * 0.04)
+    }
+
+    private var bodyShape: some View {
+        RoundedRectangle(cornerRadius: size * 0.21, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [skin, skin.opacity(0.82)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size * 0.70, height: size * 0.70)
+            .rotationEffect(.degrees(45))
+            .shadow(color: .black.opacity(0.10), radius: size * 0.03, y: size * 0.015)
+    }
+
+    /// Блик сверху слева — та же стеклянная подсветка, что в приложении.
+    private var gloss: some View {
+        Ellipse()
+            .fill(
+                LinearGradient(
+                    colors: [.white.opacity(0.65), .white.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: size * 0.30, height: size * 0.17)
+            .rotationEffect(.degrees(-28))
+            .offset(x: -size * 0.11, y: -size * 0.21)
+            .blendMode(.plusLighter)
+    }
+
+    /// Хохолок: три луча над головой. Он же показывает настроение —
+    /// подбирается, когда питомец доволен, и вянет, когда недоволен.
+    private var crest: some View {
+        Image(systemName: "sparkle")
+            .font(.system(size: size * 0.17, weight: .black))
+            .foregroundStyle(crestColor)
+            .rotationEffect(.degrees(mood == .worry || mood == .angry ? 22 : -8))
+            .offset(x: size * 0.19, y: -size * 0.34)
+            .opacity(mood == .sleep ? 0 : 1)
+    }
+
+    private var crestColor: Color {
+        switch mood {
+        case .angry, .worry: return Palette.miss
+        case .happy: return Palette.lime
+        default: return skin == .white ? Palette.limeDeep : .white.opacity(0.75)
+        }
     }
 
     // MARK: - Лицо
 
     private var face: some View {
-        VStack(spacing: size * 0.09) {
-            HStack(spacing: size * 0.20) {
-                eye
-                eye
+        VStack(spacing: size * 0.075) {
+            ZStack {
+                HStack(spacing: size * 0.17) {
+                    eye
+                    eye
+                }
+                brows
             }
-            .overlay(alignment: .top) { brows }
             mouth
         }
-        .offset(x: pose == .glance ? -size * 0.03 : 0, y: mood == .sleep ? size * 0.02 : 0)
+        .offset(x: pose == .glance ? -size * 0.035 : 0, y: size * 0.02)
+        .overlay(cheeks)
     }
 
     private var eye: some View {
@@ -68,47 +134,83 @@ struct PetFace: View {
             if closedEyes {
                 Capsule()
                     .fill(Palette.ink)
-                    .frame(width: size * 0.13, height: size * 0.045)
+                    .frame(width: size * 0.15, height: size * 0.05)
             } else {
-                Circle()
-                    .fill(Palette.ink)
-                    .frame(width: size * 0.105, height: size * 0.105)
+                ZStack(alignment: .topTrailing) {
+                    Capsule()
+                        .fill(Palette.ink)
+                        .frame(width: size * 0.125, height: size * 0.155)
+                    // Блик в зрачке: он один превращает точку во взгляд.
+                    Circle()
+                        .fill(.white.opacity(0.95))
+                        .frame(width: size * 0.045, height: size * 0.045)
+                        .offset(x: -size * 0.018, y: size * 0.028)
+                }
+                .frame(width: size * 0.125, height: size * 0.155)
             }
         }
     }
 
-    private var closedEyes: Bool {
-        pose == .blink || mood == .sleep
-    }
+    private var closedEyes: Bool { pose == .blink || mood == .sleep }
 
-    /// Брови только у злого: в остальных настроениях они съедают глаза.
+    /// Брови только у злого и встревоженного: в остальных настроениях
+    /// они съедают глаза и лицо становится хмурым без причины.
     @ViewBuilder private var brows: some View {
-        if mood == .angry {
-            HStack(spacing: size * 0.16) {
+        if mood == .angry || mood == .worry {
+            let angle: Double = mood == .angry ? 20 : 10
+            HStack(spacing: size * 0.13) {
                 Capsule()
                     .fill(Palette.ink)
-                    .frame(width: size * 0.17, height: size * 0.045)
-                    .rotationEffect(.degrees(18))
+                    .frame(width: size * 0.19, height: size * 0.05)
+                    .rotationEffect(.degrees(angle))
                 Capsule()
                     .fill(Palette.ink)
-                    .frame(width: size * 0.17, height: size * 0.045)
-                    .rotationEffect(.degrees(-18))
+                    .frame(width: size * 0.19, height: size * 0.05)
+                    .rotationEffect(.degrees(-angle))
             }
-            .offset(y: -size * 0.10)
+            .offset(y: -size * 0.155)
         }
+    }
+
+    /// Щёки появляются только когда радость настоящая — иначе улыбка
+    /// выглядит дежурной.
+    @ViewBuilder private var cheeks: some View {
+        if mood == .happy {
+            HStack(spacing: size * 0.33) {
+                blush
+                blush
+            }
+            .offset(y: size * 0.06)
+        }
+    }
+
+    private var blush: some View {
+        Ellipse()
+            .fill(Palette.miss.opacity(0.28))
+            .frame(width: size * 0.12, height: size * 0.07)
+            .blur(radius: size * 0.012)
     }
 
     private var mouth: some View {
-        Mouth(curve: curve)
-            .stroke(Palette.ink, style: StrokeStyle(lineWidth: size * 0.055, lineCap: .round))
-            .frame(width: size * 0.26, height: size * 0.10)
+        Group {
+            if mood == .happy && pose == .grin {
+                // Открытый рот: самая сильная из доступных эмоций.
+                Mouth(curve: 1)
+                    .fill(Palette.ink)
+                    .frame(width: size * 0.26, height: size * 0.14)
+            } else {
+                Mouth(curve: curve)
+                    .stroke(Palette.ink, style: StrokeStyle(lineWidth: size * 0.058, lineCap: .round))
+                    .frame(width: size * 0.26, height: size * 0.10)
+            }
+        }
     }
 
     /// От −1 (уголки вниз) до 1 (улыбка). Ноль — ровная черта.
     private var curve: CGFloat {
         switch mood {
-        case .happy: return pose == .grin ? 1.0 : 0.8
-        case .calm: return pose == .grin ? 0.7 : 0.25
+        case .happy: return 0.85
+        case .calm: return pose == .grin ? 0.7 : 0.3
         case .focus: return pose == .grin ? 0.4 : 0
         case .worry: return -0.45
         case .angry: return -0.8

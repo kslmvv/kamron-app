@@ -76,6 +76,23 @@ struct DaySnapshot: Codable {
         return now...safeEnd
     }
 
+    /// Стоит ли показывать живой отсчёт с секундами.
+    ///
+    /// Бегущие 12:26:13 до конца выходного — шум: цифры мелькают, а
+    /// смысла в них нет. Секунды нужны, когда дело вот-вот кончится.
+    static func ticking(until end: Date, from now: Date = Date()) -> Bool {
+        let left = end.timeIntervalSince(now)
+        return left > 0 && left <= 90 * 60
+    }
+
+    /// Спокойный остаток: «12 ч 26» или «48 мин».
+    static func rough(until end: Date, from now: Date = Date()) -> String {
+        let left = max(0, Int(end.timeIntervalSince(now) / 60))
+        if left < 60 { return "\(left) мин" }
+        let h = left / 60, m = left % 60
+        return m == 0 ? "\(h) ч" : "\(h) ч \(m)"
+    }
+
     static let empty = DaySnapshot(
         dateKey: "",
         updatedAt: 0,

@@ -11,7 +11,7 @@ struct DayWidgetView: View {
         if state.blocked {
             Notice(text: "Виджет не видит данных. Включите App Groups в Xcode или впишите ключ в Secrets.swift — тогда день придёт с сервера.")
         } else if !state.fresh {
-            Notice(text: "Откройте Kamron APP — виджет возьмёт сегодняшний день.")
+            Notice(text: "Пока нет сегодняшнего дня. Откройте Kamron APP — виджет подтянет его за минуту.")
         } else if family == .systemSmall {
             SmallView(state: state, pose: entry.pose, now: entry.date)
         } else {
@@ -185,7 +185,11 @@ private struct MediumView: View {
 
 // MARK: - Мелочи
 
-/// Живой остаток: секунды считает система, виджет для этого не будится.
+/// Остаток времени.
+///
+/// Секунды считает система — виджет ради них не будится. Но показываем мы
+/// их только у короткого дела: бегущие 12:26:13 до конца выходного ничего
+/// не сообщают, только мельтешат.
 private struct Left: View {
     let end: Date
     var color: Color
@@ -193,10 +197,19 @@ private struct Left: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
-                .font(.system(size: big ? 26 : 15, weight: .heavy))
-                .monospacedDigit()
-                .foregroundStyle(color)
+            if DaySnapshot.ticking(until: end) {
+                Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
+                    .font(.system(size: big ? 26 : 15, weight: .heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(color)
+                    .frame(maxWidth: big ? 108 : 74, alignment: .leading)
+            } else {
+                Text(DaySnapshot.rough(until: end))
+                    .font(.system(size: big ? 24 : 15, weight: .heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+            }
             Text("осталось")
                 .font(.system(size: big ? 12 : 11, weight: .bold))
                 .foregroundStyle(color.opacity(0.7))

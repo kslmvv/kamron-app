@@ -17,7 +17,6 @@ struct DayProvider: TimelineProvider {
     /// День приходит одним из двух путей. Общий ящик лучше: данные не
     /// выходят в сеть и виджет работает офлайн. Если Apple его не дала,
     /// берём день с сервера — страница кладёт его туда сама.
-    private var viaNetwork: Bool { !Store.shared && WidgetFeed.isConfigured }
     private var homeless: Bool { !Store.shared && !WidgetFeed.isConfigured }
 
     func placeholder(in context: Context) -> DayEntry {
@@ -38,13 +37,19 @@ struct DayProvider: TimelineProvider {
     /// показывает готовые кадры сама. Через час виджет попросит следующую
     /// порцию — к этому времени и данные успеют обновиться.
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayEntry>) -> Void) {
-        guard viaNetwork else {
-            completion(hour(with: Store.snapshot()))
+        let local = Store.snapshot()
+
+        // В сеть идём не только когда общего ящика нет, но и когда в нём
+        // лежит вчерашний день: пустой виджет с надписью «откройте
+        // приложение» бесполезен, если день можно просто забрать.
+        let needFetch = WidgetFeed.isConfigured && (local == nil || !local!.isFresh())
+        guard needFetch else {
+            completion(hour(with: local))
             return
         }
         Task {
             let fetched = await WidgetFeed.day()
-            completion(hour(with: fetched))
+            completion(hour(with: fetched ?? local))
         }
     }
 

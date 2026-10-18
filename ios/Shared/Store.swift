@@ -19,8 +19,15 @@ enum Store {
     /// в его же процессе), а виджет в этом случае ходит за днём на сервер.
     static var box: UserDefaults { UserDefaults(suiteName: groupID) ?? .standard }
 
-    /// Правда ли ящик общий. От этого зависит, откуда виджет берёт день.
-    static var shared: Bool { UserDefaults(suiteName: groupID) != nil }
+    /// Правда ли ящик общий.
+    ///
+    /// По самому UserDefaults это не определить: без разрешения Apple он
+    /// возвращает рабочий объект, просто ни с кем не общий. Поэтому
+    /// спрашиваем файловую систему — общая папка появляется только когда
+    /// группа действительно подписана.
+    static var shared: Bool {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID) != nil
+    }
 
     // MARK: - Снимок дня
 
