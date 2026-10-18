@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.2.4';
+  var VERSION = '1.2.5';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -1335,25 +1335,45 @@
         '<button class="btn ghost" id="lLoad">Восстановить из копии</button>' +
         '<p class="empty" style="text-align:left;line-height:1.5">Копия уходит сама при каждом изменении. ' +
         'Если очистишь историю Safari, открой приложение — оно вернёт данные само, пока ключ на месте. ' +
-        'Если и ключ стёрся, попроси у Jarvis команду <b>/связь</b>: он пришлёт ссылку, которая вернёт всё одним нажатием.</p>' +
+        'Если и ключ стёрся, попроси у Jarvis команду <b>/связь</b> и вставь присланную ссылку целиком в поле ключа выше — приложение само достанет из неё ключ и адрес.</p>' +
         '<p class="empty" id="lState" style="text-align:left;line-height:1.5">Через этот адрес бот видит твой день и кладёт сюда то, что ты ему наговорил. Ключ тот же, что в переменной APP_ACCESS_TOKEN на сервере.</p>';
       var u = b.querySelector('#lUrl'), k = b.querySelector('#lTok'), st = b.querySelector('#lState');
       u.value = S.link.url || ''; k.value = S.link.token || '';
+      /* Вставленную ссылку разбираем сразу, на месте: человек должен
+         увидеть в поле ключ, а в соседнем — адрес, а не свою ссылку. */
+      var takePaste = function () {
+        var got = keyFromPaste(k.value);
+        if (got.token !== k.value.trim()) k.value = got.token;
+        if (got.url) u.value = got.url;
+        S.link.url = u.value.trim();
+        S.link.token = k.value.trim();
+        badKeyTold = false;
+        linkState = 'idle';
+        save();
+      };
       u.addEventListener('change', function () { S.link.url = u.value.trim(); save(); });
-      k.addEventListener('change', function () { S.link.token = k.value.trim(); save(); });
+      k.addEventListener('change', takePaste);
       b.querySelector('#lTest').addEventListener('click', function () {
-        S.link.url = u.value.trim(); S.link.token = k.value.trim(); save();
+        takePaste();
         if (!linked()) { st.textContent = 'Заполни адрес и ключ.'; return; }
         st.textContent = 'Проверяю…';
-        fetch(S.link.url.replace(/\/$/, '') + '/api/health')
-          .then(function (r) { return r.json(); })
-          .then(function (d) {
-            var age = d['снимокМинутНазад'];
-            st.textContent = 'Сервер отвечает. Снимок обновлялся ' +
-              (age === null || age === undefined ? 'ни разу' : age + ' мин назад') + '.';
+        /* Проверяем закрытой ручкой, а не /api/health: тот отвечает всем
+           подряд, и кнопка радостно писала «сервер отвечает» при ключе,
+           который сервер не признаёт. Проверять надо ровно то, что
+           сломано. */
+        fetch(S.link.url.replace(/\/$/, '') + '/api/backups', { headers: linkHeaders() })
+          .then(function (r) {
+            if (r.status === 401 || r.status === 403) {
+              linkState = 'badkey';
+              st.textContent = 'Сервер не признаёт этот ключ. Возьми у Jarvis новую ссылку командой /связь и вставь её сюда целиком.';
+              return;
+            }
+            if (!r.ok) { linkState = 'fail'; st.textContent = 'Сервер ответил ошибкой ' + r.status + '.'; return; }
+            linkState = 'ok'; badKeyTold = false;
+            st.textContent = 'Ключ подходит, связь работает.';
             sendSnapshot();
           })
-          .catch(function () { st.textContent = 'Сервер не отвечает. Проверь адрес.'; });
+          .catch(function () { linkState = 'fail'; st.textContent = 'Сервер не отвечает. Проверь адрес.'; });
       });
       b.querySelector('#lPull').addEventListener('click', function () {
         if (!linked()) { st.textContent = 'Сначала заполни адрес и ключ.'; return; }
@@ -1782,10 +1802,34 @@
      пустое. Оболочка передаёт сюда ключ, и страница молча возвращает всё
      из последней копии — иначе человеку пришлось бы вбивать адрес и ключ
      руками в настройках, а это ровно тот шаг, на котором бросают. */
+  /* Ключ из оболочки сильнее того, что лежит в хранилище страницы.
+
+     Раньше здесь стояло «уже связаны — уходим», и это загоняло
+     приложение в тупик: если ключ на сервере сменили, страница навсегда
+     оставалась со старым. В Safari помогает ссылка восстановления, но у
+     нативной сборки своё хранилище, ссылка из Telegram открывается не в
+     ней, и починить было нечем — даже пересборка с новым ключом молча
+     ничего не меняла.
+
+     Возврат из копии при этом только для пустого приложения: смена
+     ключа не повод затирать сегодняшний день тем, что лежит на
+     сервере. */
   window.kamronLink = function (url, token) {
-    if (!url || !token || linked()) return false;
+    if (!url || !token) return false;
+    var same = linked() && S.link.token === String(token) && S.link.url === String(url);
+    if (same) return false;
+    var first = !linked();
     S.link = { url: String(url), token: String(token) };
     save();
+    badKeyTold = false;
+    linkState = 'idle';
+    if (!first) {
+      toast('Ключ связи обновлён.');
+      pullSoon();
+      syncSoon(true);
+      nativeSoon(true);
+      return true;
+    }
     restore(true).then(function (back) {
       if (back) toast('Данные вернулись из копии.');
       pullSoon();
@@ -1958,6 +2002,18 @@
 
   /* Ключ можно передать ссылкой: открыл — и приложение само вернуло всё.
      Из адреса он сразу убирается, чтобы не остаться в истории. */
+  /* В поле ключа человек почти наверняка вставит всю ссылку из Telegram —
+     выковыривать из неё ключ руками неудобно и легко ошибиться: он едет
+     закодированным, с «%3D» на конце. Принимаем оба вида. */
+  function keyFromPaste(text) {
+    var v = String(text || '').trim();
+    var k = /[#&]k=([^&\s]*)/.exec(v);
+    if (!k) return { token: v, url: '' };
+    var s = /[#&]s=([^&\s]*)/.exec(v);
+    var dec = function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } };
+    return { token: dec(k[1]), url: s ? dec(s[1]) : '' };
+  }
+
   function bootstrapLink() {
     var key = /[#&]k=([^&]*)/.exec(location.hash || '');
     if (!key || !key[1]) return false;

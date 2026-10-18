@@ -609,21 +609,29 @@ const restored = await shell.evaluate(async () => {
   const first = window.kamronLink('http://127.0.0.1:8196', 'test');
   await new Promise(r => setTimeout(r, 900));
   const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
-  // Повторный вызов на уже настроенной связи ничего не делает.
-  const second = window.kamronLink('http://example.invalid', 'другой');
+  // Тот же ключ второй раз — делать нечего.
+  const same = window.kamronLink('http://127.0.0.1:8196', 'test');
+  // А другой ключ обязан пройти: на сервере его могли сменить, и у
+  // нативной сборки это единственный путь — ссылка из Telegram
+  // открывается в Safari, а у приложения своё хранилище.
+  const second = window.kamronLink('http://127.0.0.1:8196', 'свежий');
   const after = JSON.parse(localStorage.getItem('den-kamrona-v3'));
   return {
     first,
+    same,
     second,
     tasks: (s.tasks || []).length,
     notes: (s.notes || []).length,
+    token: after.link && after.link.token,
     url: after.link && after.link.url
   };
 });
 ok('оболочка передала ключ странице', restored.first === true);
 ok('данные вернулись из копии сами', restored.tasks === 1 && restored.notes === 1);
-ok('повторная передача ключа игнорируется', restored.second === false);
-ok('чужой адрес не перезаписал связь', restored.url === 'http://127.0.0.1:8196');
+ok('тот же ключ повторно не трогает связь', restored.same === false);
+ok('сменившийся ключ оболочка перезаписывает', restored.second === true);
+ok('в хранилище лежит новый ключ', restored.token === 'свежий');
+ok('адрес остался прежним', restored.url === 'http://127.0.0.1:8196');
 await shell.close();
 shellServer.close();
 
@@ -712,6 +720,24 @@ const trickyToken = await copyPage.evaluate(() => {
   return s.link && s.link.token;
 });
 ok('ключ со «+», «/» и «=» дошёл без искажений', trickyToken === tricky);
+
+/* Ссылку из Telegram человек вставляет в поле ключа целиком — в нативной
+   сборке это единственный ручной путь, потому что ссылка из Telegram
+   открывается в Safari, а у приложения своё хранилище. */
+const pasted = await copyPage.evaluate(() => {
+  const link = 'https://kslmvv.github.io/kamron-app/#k=' +
+    encodeURIComponent('zZ+9/qW=') + '&s=' + encodeURIComponent('http://127.0.0.1:8195');
+  document.getElementById('navSetup').click();
+  document.querySelector('[data-go="link"]').click();
+  const k = document.getElementById('lTok');
+  k.value = link;
+  k.dispatchEvent(new Event('change'));
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3') || '{}');
+  return { field: k.value, token: s.link && s.link.token, url: s.link && s.link.url };
+});
+ok('вставленная ссылка разобрана на ключ', pasted.token === 'zZ+9/qW=');
+ok('адрес взят из той же ссылки', pasted.url === 'http://127.0.0.1:8195');
+ok('в поле остался ключ, а не ссылка', pasted.field === 'zZ+9/qW=');
 await copyPage.close();
 backup.close();
 
