@@ -1,6 +1,6 @@
 {
   "name": "kamron-app",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Kamron APP — режим дня, который держит: честное время, питомец с характером, фокус-режим и напоминания. PWA.",
   "type": "module",
@@ -12,7 +12,8 @@
     "format": "prettier --write \"**/*.{js,mjs,css,html,json,md}\"",
     "check": "node tools/check.mjs",
     "test": "node tests/e2e.mjs",
-    "test:setup": "npx playwright install chromium"
+    "test:setup": "npx playwright install chromium",
+    "dist-check": "node tools/dist-check.mjs"
   },
   "devDependencies": {
     "acorn": "^8.19.0",
