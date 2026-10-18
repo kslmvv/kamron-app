@@ -2938,3 +2938,1035 @@ nav button.active svg {
     animation: none !important;
   }
 }
+
+/* ── Питомец внутри сцены ────────────────────────────────────────────
+   Реквизит сам по себе оставляет впечатление фотографии: предмет
+   шевелится, а существо рядом стоит столбом. Поэтому в каждой сцене
+   двигается и сам питомец — кивает, щурится, тянется, приседает.
+
+   Отдельный слой нужен потому, что на .body уже висит анимация
+   настроения: две анимации на одно свойство не складываются, вторая
+   просто отменяет первую. Вложенный слой перемножает преобразования. */
+.actor {
+  /* Та же коробка, что у тела: без размера точка поворота схлопывается
+     в ноль, и любой наклон уносит питомца за край кадра. */
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform-origin: 50% 72%;
+}
+
+/* Чтение: голова клонится к книге, взгляд уходит вниз, медленный кивок. */
+.pet[data-scene='read'] .actor {
+  animation: readNod 5.4s ease-in-out infinite;
+}
+.pet[data-scene='read'] .eyes {
+  transform: translateY(4px);
+}
+@keyframes readNod {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  45% {
+    transform: rotate(-7deg) translateY(4px);
+  }
+}
+
+/* Работа: короткий ритм печати плюс редкое «задумался». */
+.pet[data-scene='work'] .actor {
+  animation: typeNod 0.46s ease-in-out infinite;
+}
+.pet[data-scene='work'] .eyes {
+  transform: translateY(3px) scaleY(0.78);
+}
+@keyframes typeNod {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(1.6px) rotate(0.5deg);
+  }
+}
+
+/* Душ: приседает под струёй и качается из стороны в сторону. */
+.pet[data-scene='shower'] .actor {
+  animation: scrub 1.25s ease-in-out infinite;
+}
+@keyframes scrub {
+  0%,
+  100% {
+    transform: translate(-4px, 3px) rotate(-3deg) scale(0.97, 1.03);
+  }
+  50% {
+    transform: translate(4px, 5px) rotate(3deg) scale(1.03, 0.97);
+  }
+}
+
+/* Еда: тянется к ложке в такт её ходу и открывает рот, когда та дошла. */
+.pet[data-scene='eat'] .actor {
+  animation: lean 2.4s ease-in-out infinite;
+}
+.pet[data-scene='eat'] .mouthbox {
+  animation: chew 2.4s ease-in-out infinite;
+  transform-origin: 0 14px;
+}
+@keyframes lean {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  45% {
+    transform: translate(7px, 4px) rotate(5deg);
+  }
+  65% {
+    transform: translate(5px, 2px) rotate(3deg);
+  }
+}
+@keyframes chew {
+  0%,
+  38%,
+  100% {
+    transform: scaleY(1);
+  }
+  48% {
+    transform: scaleY(2.1);
+  }
+  58% {
+    transform: scaleY(0.7);
+  }
+  68% {
+    transform: scaleY(1.6);
+  }
+}
+
+/* Дорога: откидывается назад и подпрыгивает на неровностях. */
+.pet[data-scene='travel'] .actor {
+  animation: ride 0.72s ease-in-out infinite;
+}
+@keyframes ride {
+  0%,
+  100% {
+    transform: rotate(-5deg) translateY(0);
+  }
+  40% {
+    transform: rotate(-6deg) translateY(-3px);
+  }
+  70% {
+    transform: rotate(-4deg) translateY(1px);
+  }
+}
+
+/* Спорт: приседает, когда штанга идёт вверх. Усилие должно быть видно. */
+.pet[data-scene='sport'] .actor {
+  animation: press 1.9s ease-in-out infinite;
+}
+.pet[data-scene='sport'] .mouthbox {
+  animation: strain 1.9s ease-in-out infinite;
+  transform-origin: 0 14px;
+}
+@keyframes press {
+  0%,
+  100% {
+    transform: translateY(5px) scale(1.04, 0.95);
+  }
+  50% {
+    transform: translateY(-4px) scale(0.97, 1.04);
+  }
+}
+@keyframes strain {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.7);
+  }
+}
+
+/* Экран: отсветы ложатся на тело, глаза расширены. */
+.pet[data-scene='screen'] .actor {
+  animation: glowWash 2.8s steps(6) infinite;
+}
+.pet[data-scene='screen'] .eyes {
+  transform: scale(1.12);
+}
+@keyframes glowWash {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  20% {
+    filter: brightness(1.1);
+  }
+  40% {
+    filter: brightness(0.97);
+  }
+  60% {
+    filter: brightness(1.13);
+  }
+  80% {
+    filter: brightness(1.02);
+  }
+}
+
+/* Музыка: качается в такт, голова ходит из стороны в сторону. */
+.pet[data-scene='music'] .actor {
+  animation: groove 1.1s ease-in-out infinite;
+}
+@keyframes groove {
+  0%,
+  100% {
+    transform: rotate(-6deg) translateX(-3px);
+  }
+  50% {
+    transform: rotate(6deg) translateX(3px);
+  }
+}
+
+/* Сон: тяжело оседает и поднимается — дыхание спящего. */
+.pet[data-scene='sleep'] .actor {
+  animation: slumber 4.6s ease-in-out infinite;
+}
+@keyframes slumber {
+  0%,
+  100% {
+    transform: translateY(6px) scale(1.02, 0.96);
+  }
+  50% {
+    transform: translateY(10px) scale(1.04, 0.93);
+  }
+}
+
+/* Подъём: потягивается вверх и зевает. */
+.pet[data-scene='wake'] .actor {
+  animation: stretch 5s ease-in-out infinite;
+}
+.pet[data-scene='wake'] .mouthbox {
+  animation: yawn 5s ease-in-out infinite;
+  transform-origin: 0 14px;
+}
+@keyframes stretch {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  40% {
+    transform: translateY(-9px) scale(0.94, 1.1);
+  }
+}
+@keyframes yawn {
+  0%,
+  22%,
+  100% {
+    transform: scaleY(1);
+  }
+  40% {
+    transform: scaleY(2.6);
+  }
+  58% {
+    transform: scaleY(1.2);
+  }
+}
+
+/* Звонок: наклоняется к трубке и говорит. */
+.pet[data-scene='call'] .actor {
+  animation: tilt 2.6s ease-in-out infinite;
+}
+.pet[data-scene='call'] .mouthbox {
+  animation: chat 0.52s ease-in-out infinite;
+  transform-origin: 0 14px;
+}
+@keyframes tilt {
+  0%,
+  100% {
+    transform: rotate(7deg) translateX(4px);
+  }
+  50% {
+    transform: rotate(10deg) translateX(7px);
+  }
+}
+@keyframes chat {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.8);
+  }
+}
+
+/* Покупки: перевешивает на сторону пакета. */
+.pet[data-scene='shop'] .actor {
+  animation: carry 2.2s ease-in-out infinite;
+}
+@keyframes carry {
+  0%,
+  100% {
+    transform: rotate(5deg) translateX(-3px);
+  }
+  50% {
+    transform: rotate(8deg) translateX(-6px);
+  }
+}
+
+/* Уборка: ходит за метлой. */
+.pet[data-scene='clean'] .actor {
+  animation: push 1.5s ease-in-out infinite;
+}
+@keyframes push {
+  0%,
+  100% {
+    transform: translateX(-6px) rotate(-4deg);
+  }
+  50% {
+    transform: translateX(6px) rotate(4deg);
+  }
+}
+
+/* Прогулка: шаг за шагом, с лёгким подскоком. */
+.pet[data-scene='walk'] .actor {
+  animation: step 0.92s ease-in-out infinite;
+}
+@keyframes step {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(2deg);
+  }
+}
+
+/* ── Ещё шестнадцать сцен ────────────────────────────────────────────
+   Чем длиннее список, тем реже попадается «ничего не происходит».
+   Каждая сцена движется сама и двигает питомца: без второго получается
+   фотография с одной шевелящейся деталью. */
+
+/* Письмо: карандаш ходит по строке, строки проявляются. */
+.sheet {
+  width: 88px;
+  bottom: 6px;
+  left: 50%;
+  margin-left: -44px;
+}
+.sh-p {
+  fill: #fffdf4;
+  stroke: rgba(60, 74, 30, 0.35);
+  stroke-width: 3;
+}
+.sh-t rect {
+  fill: rgba(60, 74, 30, 0.45);
+  transform-origin: 16px 0;
+}
+.sh-t rect:nth-child(1) {
+  animation: inkLine 4.2s steps(10) infinite;
+}
+.sh-t rect:nth-child(2) {
+  animation: inkLine 4.2s steps(10) 1.4s infinite;
+}
+.sh-t rect:nth-child(3) {
+  animation: inkLine 4.2s steps(10) 2.8s infinite;
+}
+@keyframes inkLine {
+  0% {
+    transform: scaleX(0);
+  }
+  28% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+.pencil {
+  width: 17px;
+  bottom: 34px;
+  left: 50%;
+  margin-left: -6px;
+  transform-origin: 50% 0;
+  animation: scribble 1.4s ease-in-out infinite;
+}
+.pc-b {
+  fill: var(--lime-deep);
+}
+.pc-t {
+  fill: #3b4432;
+}
+@keyframes scribble {
+  0%,
+  100% {
+    transform: translate(-26px, 0) rotate(-12deg);
+  }
+  50% {
+    transform: translate(26px, -3px) rotate(-6deg);
+  }
+}
+.pet[data-scene='write'] .actor {
+  animation: readNod 4.2s ease-in-out infinite;
+}
+.pet[data-scene='write'] .eyes {
+  transform: translateY(4px);
+}
+
+/* Доклад: столбцы растут по очереди. */
+.chart {
+  width: 102px;
+  bottom: 6px;
+  left: 50%;
+  margin-left: -51px;
+}
+.ch-f {
+  fill: #eef2e1;
+  stroke: rgba(60, 74, 30, 0.4);
+  stroke-width: 3;
+}
+.ch-l {
+  fill: rgba(60, 74, 30, 0.4);
+}
+.ch-b rect {
+  fill: var(--lime-deep);
+  transform-origin: 0 52px;
+}
+.ch-b rect:nth-child(1) {
+  animation: grow 3s ease-in-out infinite;
+}
+.ch-b rect:nth-child(2) {
+  animation: grow 3s ease-in-out 0.35s infinite;
+}
+.ch-b rect:nth-child(3) {
+  animation: grow 3s ease-in-out 0.7s infinite;
+}
+@keyframes grow {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  45% {
+    transform: scaleY(1);
+  }
+}
+.pet[data-scene='present'] .actor {
+  animation: point 3s ease-in-out infinite;
+}
+@keyframes point {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+/* Здоровье: линия пульса бежит, сердце бьётся. */
+.pulse {
+  width: 116px;
+  bottom: 28px;
+  left: 50%;
+  margin-left: -58px;
+}
+.pl-t {
+  fill: none;
+  stroke: var(--miss, #f4604c);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 46 200;
+  animation: trace 2.2s linear infinite;
+}
+@keyframes trace {
+  from {
+    stroke-dashoffset: 240;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.hrt {
+  width: 16px;
+  height: 16px;
+  background: #f4604c;
+  bottom: 54px;
+  left: 50%;
+  margin-left: -8px;
+  border-radius: 3px;
+  transform: rotate(45deg);
+  box-shadow:
+    -8px 0 0 #f4604c,
+    0 -8px 0 #f4604c;
+  animation: beat 1.1s ease-in-out infinite;
+}
+@keyframes beat {
+  0%,
+  100% {
+    transform: rotate(45deg) scale(1);
+  }
+  18% {
+    transform: rotate(45deg) scale(1.22);
+  }
+  36% {
+    transform: rotate(45deg) scale(1);
+  }
+  54% {
+    transform: rotate(45deg) scale(1.14);
+  }
+}
+.pet[data-scene='health'] .actor {
+  animation: slumber 3.4s ease-in-out infinite;
+}
+
+/* Деньги: монеты падают в кошелёк. */
+.purse {
+  width: 66px;
+  bottom: 8px;
+  left: 50%;
+  margin-left: -33px;
+}
+.pu {
+  fill: var(--lime);
+  stroke: rgba(60, 74, 30, 0.4);
+  stroke-width: 3;
+}
+.pu-c {
+  stroke: rgba(60, 74, 30, 0.45);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.coin {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #e8c84a;
+  border: 2px solid #b9981f;
+  top: 18px;
+  left: 50%;
+  margin-left: -7px;
+  animation: drop 1.8s ease-in infinite;
+}
+.c2 {
+  animation-delay: 0.6s;
+  margin-left: -20px;
+}
+.c3 {
+  animation-delay: 1.2s;
+  margin-left: 6px;
+}
+@keyframes drop {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(116px) rotate(220deg);
+    opacity: 0;
+  }
+}
+
+/* Подарок: коробка подпрыгивает, бант дрожит. */
+.box {
+  width: 62px;
+  bottom: 10px;
+  left: 50%;
+  margin-left: -31px;
+  animation: jiggle 1.3s ease-in-out infinite;
+}
+.bx-b {
+  fill: var(--lime);
+  stroke: rgba(60, 74, 30, 0.4);
+  stroke-width: 3;
+}
+.bx-l {
+  fill: #cfe36a;
+  stroke: rgba(60, 74, 30, 0.4);
+  stroke-width: 3;
+}
+.bx-r {
+  fill: #f4604c;
+}
+.bx-k {
+  fill: none;
+  stroke: #f4604c;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+@keyframes jiggle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  40% {
+    transform: translateY(-8px) rotate(3deg);
+  }
+}
+.pet[data-scene='gift'] .actor {
+  animation: step 1.3s ease-in-out infinite;
+}
+
+/* Семья: рядом двое своих, подпрыгивают вразнобой. */
+.kin {
+  width: 38px;
+  bottom: 26px;
+}
+.kin rect {
+  fill: var(--lime);
+  stroke: rgba(60, 74, 30, 0.35);
+  stroke-width: 2.5;
+}
+.k-a {
+  left: 8px;
+  animation: step 1.1s ease-in-out infinite;
+}
+.k-b {
+  right: 8px;
+  animation: step 1.1s ease-in-out 0.45s infinite;
+}
+.k-c {
+  right: 14px;
+  bottom: 34px;
+  animation: step 1.6s ease-in-out infinite;
+}
+.pet[data-scene='family'] .actor {
+  animation: step 1.1s ease-in-out 0.22s infinite;
+}
+
+/* Стирка: барабан крутится вместе с бельём. */
+.wash {
+  width: 84px;
+  bottom: 6px;
+  left: 50%;
+  margin-left: -42px;
+}
+.wa-f {
+  fill: #e4e9d8;
+  stroke: rgba(60, 74, 30, 0.4);
+  stroke-width: 3;
+}
+.wa-d {
+  fill: #b9d4ee;
+  stroke: rgba(60, 74, 30, 0.35);
+  stroke-width: 3;
+}
+.wa-k {
+  fill: var(--lime-deep);
+}
+.wa-s {
+  transform-origin: 45px 50px;
+  animation: spin 1.5s linear infinite;
+}
+.wa-s circle {
+  fill: #fff;
+  opacity: 0.85;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.pet[data-scene='laundry'] .actor {
+  animation: typeNod 0.6s ease-in-out infinite;
+}
+
+/* Ремонт: ключ проворачивается, летят искры. */
+.wrench {
+  width: 34px;
+  bottom: 14px;
+  left: 50%;
+  margin-left: 6px;
+  transform-origin: 50% 85%;
+  animation: turnKey 1.7s ease-in-out infinite;
+}
+.wr-s {
+  fill: #b9c4a6;
+}
+.wr-h {
+  fill: #cdd7ba;
+  stroke: rgba(60, 74, 30, 0.4);
+  stroke-width: 2.5;
+}
+@keyframes turnKey {
+  0%,
+  100% {
+    transform: rotate(-26deg);
+  }
+  55% {
+    transform: rotate(16deg);
+  }
+}
+.spark {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffb020;
+  top: 56px;
+  left: 108px;
+  animation: fly 1.7s ease-out infinite;
+}
+.spark.s2 {
+  animation-delay: 0.2s;
+}
+.spark.s3 {
+  animation-delay: 0.42s;
+}
+@keyframes fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(26px, -22px) scale(0.3);
+    opacity: 0;
+  }
+}
+.pet[data-scene='repair'] .actor {
+  animation: push 1.7s ease-in-out infinite;
+}
+
+/* Стрижка: ножницы щёлкают. */
+.scis {
+  width: 60px;
+  top: 16px;
+  left: 50%;
+  margin-left: 16px;
+}
+.scis rect {
+  fill: #c3cdb2;
+}
+.scis circle {
+  fill: none;
+  stroke: #c3cdb2;
+  stroke-width: 5;
+}
+.sc-a {
+  transform-origin: 35px 38px;
+  animation: snipL 0.9s ease-in-out infinite;
+}
+.sc-b {
+  transform-origin: 35px 38px;
+  animation: snipR 0.9s ease-in-out infinite;
+}
+@keyframes snipL {
+  0%,
+  100% {
+    transform: rotate(-9deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes snipR {
+  0%,
+  100% {
+    transform: rotate(9deg);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+.pet[data-scene='haircut'] .actor {
+  animation: slumber 3s ease-in-out infinite;
+}
+
+/* Игра: кнопки нажимаются по очереди, руки дёргаются. */
+.pad {
+  width: 110px;
+  bottom: 10px;
+  left: 50%;
+  margin-left: -55px;
+  animation: typeShake 0.3s ease-in-out infinite;
+}
+.pd-b {
+  fill: #2a3220;
+}
+.pd-d {
+  fill: #9fb183;
+}
+.pd-x {
+  fill: var(--lime);
+  animation: press2 0.8s ease-in-out infinite;
+}
+.pd-y {
+  fill: #f4604c;
+  animation: press2 0.8s ease-in-out 0.4s infinite;
+}
+@keyframes press2 {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(1.5px);
+    opacity: 0.55;
+  }
+}
+.pet[data-scene='game'] .actor {
+  animation: groove 0.8s ease-in-out infinite;
+}
+.pet[data-scene='game'] .eyes {
+  transform: scale(1.1);
+}
+
+/* Мяч: скачет и сплющивается об землю. */
+.ball {
+  /* Сбоку, а не перед лицом: на подскоке мяч закрывал глаз. */
+  width: 42px;
+  bottom: 6px;
+  left: 50%;
+  margin-left: 52px;
+  animation: bounce 1.05s cubic-bezier(0.3, 0, 0.6, 1) infinite;
+}
+.bl-o {
+  fill: #fff;
+  stroke: rgba(60, 74, 30, 0.45);
+  stroke-width: 3;
+}
+.bl-p {
+  fill: #2a3220;
+}
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.12, 0.88);
+  }
+  12% {
+    transform: translateY(-10px) scale(0.96, 1.04);
+  }
+  50% {
+    transform: translateY(-58px) scale(1, 1);
+  }
+  88% {
+    transform: translateY(-10px) scale(0.96, 1.04);
+  }
+}
+.pet[data-scene='ball'] .actor {
+  animation: step 1.05s ease-in-out infinite;
+}
+
+/* Напиток: чашка у рта, над ней пар. */
+.cup {
+  width: 72px;
+  bottom: 18px;
+  left: 50%;
+  margin-left: -36px;
+  transform-origin: 20% 90%;
+  animation: sip 3.2s ease-in-out infinite;
+}
+.cp-b {
+  fill: #fffdf4;
+  stroke: rgba(60, 74, 30, 0.42);
+  stroke-width: 3.5;
+}
+.cp-e {
+  fill: none;
+  stroke: rgba(60, 74, 30, 0.42);
+  stroke-width: 3.5;
+}
+@keyframes sip {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  45% {
+    transform: rotate(-20deg) translateY(-14px);
+  }
+  65% {
+    transform: rotate(-18deg) translateY(-12px);
+  }
+}
+.pet[data-scene='drink'] .actor {
+  animation: lean 3.2s ease-in-out infinite;
+}
+
+/* Молитва: коврик на полу, поклон. */
+.rug {
+  width: 150px;
+  bottom: 0;
+  left: 50%;
+  margin-left: -75px;
+}
+.rg {
+  fill: #cfd9bb;
+  stroke: rgba(60, 74, 30, 0.35);
+  stroke-width: 3;
+}
+.rg-l {
+  fill: none;
+  stroke: rgba(60, 74, 30, 0.25);
+  stroke-width: 2.5;
+}
+.pet[data-scene='pray'] .actor {
+  animation: bow 6s ease-in-out infinite;
+}
+@keyframes bow {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  40% {
+    transform: translateY(22px) scale(1.06, 0.84);
+  }
+  58% {
+    transform: translateY(22px) scale(1.06, 0.84);
+  }
+}
+
+/* Фото: объектив наводится, срабатывает вспышка. */
+.cam {
+  width: 92px;
+  bottom: 12px;
+  left: 50%;
+  margin-left: -46px;
+}
+.cm-b {
+  fill: #2a3220;
+}
+.cm-t {
+  fill: #3e4a31;
+}
+.cm-l {
+  fill: #5c6b49;
+}
+.cm-i {
+  fill: var(--lime);
+  animation: focusIn 2.6s ease-in-out infinite;
+  transform-origin: 50px 40px;
+}
+@keyframes focusIn {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.65);
+  }
+}
+.flash {
+  inset: 0;
+  background: #fff;
+  border-radius: 24px;
+  opacity: 0;
+  animation: pop2 2.6s ease-out infinite;
+}
+@keyframes pop2 {
+  0%,
+  48%,
+  100% {
+    opacity: 0;
+  }
+  52% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0;
+  }
+}
+
+/* Полёт: самолётик пересекает кадр, облака плывут мимо. */
+.plane {
+  width: 72px;
+  top: 34px;
+  left: -70px;
+  animation: cross 4.4s linear infinite;
+}
+.pn {
+  fill: var(--lime-deep);
+}
+@keyframes cross {
+  0% {
+    transform: translateX(0) translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(270px) translateY(-26px);
+    opacity: 0;
+  }
+}
+.cld {
+  width: 46px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  animation: driftBy 6s linear infinite;
+}
+.cld.f1 {
+  top: 18px;
+  left: 190px;
+}
+.cld.f2 {
+  top: 118px;
+  left: 210px;
+  animation-delay: 2.4s;
+}
+@keyframes driftBy {
+  from {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  to {
+    transform: translateX(-250px);
+    opacity: 0;
+  }
+}
+.pet[data-scene='flight'] .actor {
+  animation: slumber 4s ease-in-out infinite;
+}
+
+/* Встреча: напротив ещё один, между ними идёт разговор. */
+.talkline {
+  width: 38px;
+  top: 52px;
+  right: 16px;
+}
+.tl {
+  fill: var(--lime-deep);
+}
+.tl:nth-child(1) {
+  animation: blip 1.2s ease-in-out infinite;
+}
+.tl:nth-child(2) {
+  animation: blip 1.2s ease-in-out 0.2s infinite;
+}
+.tl:nth-child(3) {
+  animation: blip 1.2s ease-in-out 0.4s infinite;
+}
+@keyframes blip {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+.pet[data-scene='meeting'] .actor {
+  animation: tilt 2.6s ease-in-out infinite;
+}
+.pet[data-scene='meeting'] .mouthbox {
+  animation: chat 0.6s ease-in-out infinite;
+  transform-origin: 0 14px;
+}

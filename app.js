@@ -127,7 +127,7 @@
     [/зал|трениров|спорт|бег|пробеж|отжим|турник|качал|фитнес/, '🏋️'],
     [/футбол|баскет|теннис|матч|игра в/, '⚽️'],
     [/обед|ужин|завтрак|поесть|покушать|еда|ресторан|кафе/, '🍽️'],
-    [/кофе|чай/, '☕️'],
+    [/кофе|чай|капучино|латте/, '☕️'],
     [/вода|попить|стакан/, '💧'],
     [/магаз|купить|покуп|базар|продукт|заказ/, '🛒'],
     [/урок|учёб|учеб|домашк|задани|эссе|реферат|курсов|экзамен|зачёт|зачет|пара/, '📚'],
@@ -140,7 +140,7 @@
     [/врач|больниц|анализ|стоматолог|зуб|аптек|лекарств|таблет/, '🩺'],
     [/душ|помыть|ванн|зубы/, '🚿'],
     [/убра|уборк|пропылес|помыть пол|посуд/, '🧹'],
-    [/стирк|постира|бель/, '🧺'],
+    [/стирк|постира|бель|порошок/, '🧺'],
     [/дорог|ехать|поехать|такси|автобус|метро/, '🚌'],
     [/самол|аэропорт|рейс|виза|поездк|путешеств/, '✈️'],
     [/деньг|оплат|заплат|счёт|счет|перевод|карт|банк|налог/, '💳'],
@@ -149,13 +149,13 @@
     [/игр|пристав|катк|dota|cs/, '🎮'],
     [/спать|сон|отбой|лечь/, '😴'],
     [/мама|папа|брат|сестр|родител|семь|бабушк|дедушк/, '👨‍👩‍👦'],
-    [/молит|намаз|мечет|коран/, '🕌'],
+    [/молит|намаз|мечет|коран|джума/, '🕌'],
     [/универ|институт|лекци|декан|деканат/, '🎓'],
     [/почта|письмо на|mail|имейл/, '✉️'],
-    [/фото|снять|камер/, '📷'],
-    [/ремонт|почин|собрать|инструмент/, '🔧'],
-    [/стрижк|парикмахер|барбер/, '💈'],
-    [/прогул|погул|парк|улиц/, '🌳']
+    [/фото|фотк|сфотк|снять|камер|селфи/, '📷'],
+    [/ремонт|почин|собрать|инструмент|кран|розетк|прикрут/, '🔧'],
+    [/стрижк|стрич|стриж|парикмахер|барбер/, '💈'],
+    [/прогул|погул|парк|улиц|пешком|подыш/, '🌳']
   ];
   function guessIcon(title) {
     var text = String(title || '').toLowerCase();
@@ -249,25 +249,129 @@
       ' M70 26 Q75 5 80 26 M94 26 Q98 9 102 26 M118 26 Q123 7 128 26 M142 26 Q146 10 150 26' +
       ' M166 26 Q171 6 176 26 M192 26 Q196 9 200 26"></path></svg>',
 
+    write:
+      '<svg class="pr sheet" viewBox="0 0 100 76"><rect class="sh-p" x="6" y="4" width="88" height="68" rx="6"></rect>' +
+      '<g class="sh-t"><rect x="16" y="18" width="46" height="4" rx="2"></rect>' +
+      '<rect x="16" y="32" width="62" height="4" rx="2"></rect>' +
+      '<rect x="16" y="46" width="36" height="4" rx="2"></rect></g></svg>' +
+      '<svg class="pr pencil" viewBox="0 0 20 70"><rect class="pc-b" x="6" y="0" width="8" height="54" rx="3"></rect>' +
+      '<path class="pc-t" d="M6 54 H14 L10 68 Z"></path></svg>',
+
+    present:
+      '<svg class="pr chart" viewBox="0 0 110 70"><rect class="ch-f" x="2" y="2" width="106" height="60" rx="7"></rect>' +
+      '<g class="ch-b"><rect x="18" y="20" width="14" height="32" rx="3"></rect>' +
+      '<rect x="42" y="20" width="14" height="32" rx="3"></rect>' +
+      '<rect x="66" y="20" width="14" height="32" rx="3"></rect></g>' +
+      '<rect class="ch-l" x="12" y="52" width="86" height="3" rx="1.5"></rect></svg>',
+
+    health:
+      '<svg class="pr pulse" viewBox="0 0 120 44"><path class="pl-t" d="M2 22 H34 L42 6 L52 38 L62 22 H118"></path></svg>' +
+      '<i class="hrt"></i>',
+
+    money:
+      '<i class="coin c1"></i><i class="coin c2"></i><i class="coin c3"></i>' +
+      '<svg class="pr purse" viewBox="0 0 70 50"><rect class="pu" x="4" y="10" width="62" height="36" rx="8"></rect>' +
+      '<path class="pu-c" d="M44 28 H58"></path></svg>',
+
+    gift:
+      '<svg class="pr box" viewBox="0 0 70 64"><rect class="bx-b" x="6" y="22" width="58" height="38" rx="6"></rect>' +
+      '<rect class="bx-l" x="2" y="14" width="66" height="14" rx="5"></rect>' +
+      '<rect class="bx-r" x="31" y="14" width="8" height="46"></rect>' +
+      '<path class="bx-k" d="M35 14 C26 2 14 6 20 14 M35 14 C44 2 56 6 50 14"></path></svg>',
+
+    family:
+      '<svg class="pr kin k-a" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="11" transform="rotate(45 20 20)"></rect></svg>' +
+      '<svg class="pr kin k-b" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="11" transform="rotate(45 20 20)"></rect></svg>',
+
+    laundry:
+      '<svg class="pr wash" viewBox="0 0 90 90"><rect class="wa-f" x="4" y="4" width="82" height="82" rx="12"></rect>' +
+      '<circle class="wa-d" cx="45" cy="50" r="27"></circle>' +
+      '<g class="wa-s"><circle cx="45" cy="34" r="6"></circle><circle cx="59" cy="56" r="5"></circle>' +
+      '<circle cx="32" cy="58" r="4.5"></circle></g>' +
+      '<circle class="wa-k" cx="72" cy="16" r="4"></circle></svg>',
+
+    repair:
+      '<svg class="pr wrench" viewBox="0 0 40 80"><rect class="wr-s" x="15" y="18" width="10" height="58" rx="4"></rect>' +
+      '<path class="wr-h" d="M20 2 A14 14 0 1 0 20 30 A9 9 0 1 1 20 2 Z"></path></svg>' +
+      '<i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i>',
+
+    haircut:
+      '<svg class="pr scis" viewBox="0 0 70 60"><g class="sc-a"><rect x="30" y="4" width="6" height="34" rx="3"></rect>' +
+      '<circle cx="24" cy="48" r="9"></circle></g>' +
+      '<g class="sc-b"><rect x="34" y="4" width="6" height="34" rx="3"></rect>' +
+      '<circle cx="46" cy="48" r="9"></circle></g></svg>',
+
+    game:
+      '<svg class="pr pad" viewBox="0 0 120 58"><rect class="pd-b" x="4" y="8" width="112" height="42" rx="18"></rect>' +
+      '<rect class="pd-d" x="22" y="24" width="22" height="6" rx="3"></rect>' +
+      '<rect class="pd-d" x="30" y="16" width="6" height="22" rx="3"></rect>' +
+      '<circle class="pd-x" cx="88" cy="22" r="6"></circle>' +
+      '<circle class="pd-y" cx="100" cy="34" r="6"></circle></svg>',
+
+    ball:
+      '<svg class="pr ball" viewBox="0 0 54 54"><circle class="bl-o" cx="27" cy="27" r="24"></circle>' +
+      '<path class="bl-p" d="M27 10 L37 18 L33 30 H21 L17 18 Z"></path></svg>',
+
+    drink:
+      '<svg class="pr cup" viewBox="0 0 80 70"><path class="cp-b" d="M10 14 H62 V44 A22 22 0 0 1 10 44 Z"></path>' +
+      '<path class="cp-e" d="M62 20 A12 12 0 0 1 62 42"></path></svg>' +
+      '<i class="stm m1"></i><i class="stm m2"></i>',
+
+    pray:
+      '<svg class="pr rug" viewBox="0 0 160 46"><path class="rg" d="M10 44 V18 Q80 -6 150 18 V44 Z"></path>' +
+      '<path class="rg-l" d="M24 44 V22 Q80 4 136 22 V44"></path></svg>',
+
+    photo:
+      '<svg class="pr cam" viewBox="0 0 100 70"><rect class="cm-b" x="4" y="14" width="92" height="52" rx="10"></rect>' +
+      '<rect class="cm-t" x="34" y="4" width="32" height="12" rx="4"></rect>' +
+      '<circle class="cm-l" cx="50" cy="40" r="17"></circle>' +
+      '<circle class="cm-i" cx="50" cy="40" r="9"></circle></svg>' +
+      '<i class="flash"></i>',
+
+    flight:
+      '<svg class="pr plane" viewBox="0 0 80 46"><path class="pn" d="M4 26 L62 12 L58 24 L76 22 L58 32 L62 42 Z"></path></svg>' +
+      '<i class="cld f1"></i><i class="cld f2"></i>',
+
+    meeting:
+      '<svg class="pr kin k-c" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="11" transform="rotate(45 20 20)"></rect></svg>' +
+      '<svg class="pr talkline" viewBox="0 0 40 20"><circle class="tl" cx="8" cy="10" r="3.5"></circle>' +
+      '<circle class="tl" cx="20" cy="10" r="3.5"></circle><circle class="tl" cx="32" cy="10" r="3.5"></circle></svg>',
+
     idle: ''
   };
 
   /* Значок дела выбирает сцену. Тип блока — запасной путь: у режимных
      блоков значок стоит всегда, а у задач его подбирает guessIcon. */
   var SCENE_BY_ICON = {
-    '📖': 'read', '📚': 'read', '📝': 'read', '📊': 'read', '🎓': 'read',
+    '📖': 'read', '📚': 'read', '🎓': 'read',
+    '📝': 'write', '✉️': 'write',
+    '📊': 'present',
+    '🩺': 'health',
     '💻': 'work',
     '🚿': 'shower',
-    '🍽️': 'eat', '☕️': 'eat', '🍲': 'eat', '💧': 'eat',
-    '🚌': 'travel', '🚗': 'travel', '✈️': 'travel',
-    '🏋️': 'sport', '⚽️': 'sport',
-    '🎬': 'screen', '🎮': 'screen',
+    '🍽️': 'eat', '🍲': 'eat',
+    '☕️': 'drink', '💧': 'drink',
+    '🚌': 'travel', '🚗': 'travel',
+    '✈️': 'flight',
+    '🏋️': 'sport',
+    '⚽️': 'ball',
+    '🎬': 'screen',
+    '🎮': 'game',
     '🎧': 'music',
     '😴': 'sleep', '🌙': 'sleep',
     '🌅': 'wake',
-    '📞': 'call', '🤝': 'call',
-    '🛒': 'shop', '🎁': 'shop', '💳': 'shop',
-    '🧹': 'clean', '🧺': 'clean', '🔧': 'clean',
+    '📞': 'call',
+    '🤝': 'meeting',
+    '🛒': 'shop',
+    '🎁': 'gift',
+    '💳': 'money',
+    '👨‍👩‍👦': 'family',
+    '🧹': 'clean',
+    '🧺': 'laundry',
+    '🔧': 'repair',
+    '💈': 'haircut',
+    '🕌': 'pray',
+    '📷': 'photo',
     '🌳': 'walk', '🌿': 'walk', '✨': 'walk'
   };
   var SCENE_BY_KIND = {
@@ -678,7 +782,14 @@
     /* Чем занят питомец. Ночью он спит независимо от плана: если дело
        идёт в три часа ночи, это уже не повод бодриться. */
     var night = t.nowMin >= toMin(S.cfg.sleep) || t.nowMin < toMin(S.cfg.wake);
-    var busy = t.day.find(function (b) { return !b.free && t.nowMin >= b.from && t.nowMin < b.to; });
+    /* Дел может идти сразу несколько: задача на 17:50 попадает внутрь
+       блока «Работа». Побеждает начавшееся позже — оно конкретнее.
+       Иначе личная задача всегда тонула бы под фоновым блоком. */
+    var busy = null;
+    t.day.forEach(function (b) {
+      if (b.free || t.nowMin < b.from || t.nowMin >= b.to) return;
+      if (!busy || b.from > busy.from || (b.from === busy.from && b.kind === 'task')) busy = b;
+    });
     Pet.setScene(!isToday() ? 'idle' : night ? 'sleep' : sceneFor(busy));
 
     renderHabTop(t.dk);
