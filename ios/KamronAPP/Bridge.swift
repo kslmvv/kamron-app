@@ -64,9 +64,10 @@ final class Bridge: NSObject, WKScriptMessageHandler {
            внутри обёртки свой и к уведомлениям айфона отношения не имеет.
            Без ответа экран настроек показывал бы «разрешено» тому, кто
            нажал «Не разрешать». */
-        Reminders.onState = { [weak self] granted in
+        Reminders.onState = { [weak self] granted, count, next in
+            let safe = next.replacingOccurrences(of: "'", with: "")
             self?.webView?.evaluateJavaScript(
-                "window.kamronNotifState && window.kamronNotifState(\(granted))"
+                "window.kamronNotifState && window.kamronNotifState(\(granted), \(count), '\(safe)')"
             )
         }
         Reminders.apply(parsed)

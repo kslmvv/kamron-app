@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.3.1';
+  var VERSION = '1.3.2';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -1351,7 +1351,13 @@
           ? 'Напоминания заводит сам айфон на три дня вперёд, поэтому приходят даже при закрытом приложении и без интернета. ' +
             'В уведомлении о деле есть кнопка «Сделал» — отметка применится, когда откроешь приложение.'
           : 'Пока приложение живёт в браузере, напоминания приходят, только когда оно открыто. ' +
-            'Чтобы они приходили всегда, нужна сборка на айфон.') + '</p>';
+            'Чтобы они приходили всегда, нужна сборка на айфон.') + '</p>' +
+        /* Счётчик отвечает на единственный вопрос, который возникает,
+           когда уведомления не приходят: на каком шаге рвётся. Ноль —
+           план не доехал до системы; число и время — заведено, и дело в
+           самом айфоне: фокус, беззвучный, выключенные уведомления. */
+        (native ? '<p class="empty" id="nDiag" style="text-align:left;line-height:1.5">' +
+          notifDiag() + '</p>' : '');
       var ask = b.querySelector('#askPerm');
       if (ask) ask.addEventListener('click', function () {
         if (!('Notification' in window)) { toast('Браузер не умеет уведомления.'); return; }
@@ -1507,6 +1513,18 @@
     if (linkState === 'badkey') return 'ключ не подходит — нужна новая ссылка';
     return linkState === 'fail' ? 'настроена, сервер молчит' : 'настроена';
   }
+  /* Что именно сейчас заведено в системе — словами. */
+  function notifDiag() {
+    if (nativeNotifOK === null) return 'Состояние уточняется у айфона…';
+    if (!nativeNotifOK) return 'Айфон запретил уведомления этому приложению. ' +
+      'Настройки айфона → Kamron → Уведомления → разрешить.';
+    if (!S.notif.on) return 'Напоминания выключены переключателем выше.';
+    if (!nativeNotifCount) return 'Заведено: ни одного. Значит, план не дошёл до системы — ' +
+      'покажи эту строку в переписке, буду разбирать.';
+    return 'Заведено напоминаний: ' + nativeNotifCount +
+      (nativeNotifNext ? '. Ближайшее: ' + nativeNotifNext + '.' : '.');
+  }
+
   function notifSub() {
     /* В сборке разрешение даёт система, и про него знает только
        оболочка. Notification.permission внутри обёртки свой и к
@@ -1988,11 +2006,11 @@
   /* Оболочка сообщает, разрешил ли человек уведомления системе. Сама
      страница этого не знает: Notification внутри обёртки свой и к
      уведомлениям айфона отношения не имеет. */
-  var nativeNotifOK = null;
-  window.kamronNotifState = function (granted) {
-    var next = !!granted;
-    if (next === nativeNotifOK) return;
-    nativeNotifOK = next;
+  var nativeNotifOK = null, nativeNotifCount = null, nativeNotifNext = '';
+  window.kamronNotifState = function (granted, count, next) {
+    var ok = !!granted, n = Number(count) || 0, when = String(next || '');
+    if (ok === nativeNotifOK && n === nativeNotifCount && when === nativeNotifNext) return;
+    nativeNotifOK = ok; nativeNotifCount = n; nativeNotifNext = when;
     el.notifSub.textContent = notifSub();
     if (subOpen === 'notif' && !el.setSub.hidden) renderSub('notif');
   };

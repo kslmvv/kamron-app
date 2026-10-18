@@ -123,6 +123,17 @@ enum Reminders {
     /// применить потом нужно свежий, а не тот, что лежал в замыкании.
     private static var version = 0
 
+    /// Самый свежий план.
+    ///
+    /// Одной проверки номера мало. Пока открыт запрос разрешения, может
+    /// прийти второй план: он увидит статус «ещё не решено», уйдёт во
+    /// вторую ветку и ничего не заведёт, а первый к моменту «Разрешить»
+    /// станет устаревшим и будет отброшен. В итоге человек нажал
+    /// «Разрешить», а напоминаний нет ни одного — и следующей попытки не
+    /// будет, пока план не изменится сам. Поэтому после выданного
+    /// разрешения заводим то, что лежит здесь.
+    private static var latest: NotifPlan?
+
     static func register() {
         let done = UNNotificationAction(
             identifier: doneAction,
@@ -150,6 +161,7 @@ enum Reminders {
         queue.async {
             version += 1
             let mine = version
+            latest = plan
 
             guard plan.notif.on else {
                 clearSync()
@@ -167,7 +179,14 @@ enum Reminders {
                 switch settings.authorizationStatus {
                 case .notDetermined:
                     center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-                        if granted { queue.async { scheduleSync(plan, version: mine) } }
+                        guard granted else { report(); return }
+                        /* Заводим самый свежий план, а не тот, что лежал
+                           в этом замыкании: пока человек смотрел на
+                           запрос, страница могла прислать новый. */
+                        queue.async {
+                            if let fresh = latest { scheduleSync(fresh, version: version) }
+                            else { scheduleSync(plan, version: mine) }
+                        }
                         report()
                     }
                 case .denied:
@@ -200,6 +219,10 @@ enum Reminders {
                 made += 1
             }
         }
+
+        // Пересчитать после завода, а не до: иначе экран настроек
+        // показывал бы количество от прошлого раза.
+        report()
     }
 
     static func clear() {
@@ -273,13 +296,36 @@ enum Reminders {
     /// имеет. Без этого ответа экран настроек показывал бы «разрешено»
     /// человеку, который нажал «Не разрешать», а кнопка проверки молча
     /// не делала бы ничего.
-    static var onState: ((Bool) -> Void)?
+    /// Разрешено, сколько будильников заведено и во сколько ближайший.
+    ///
+    /// Счётчик здесь не для красоты. «Уведомления не приходят» — это три
+    /// разные поломки: не дали разрешение, план не доехал или не
+    /// разобрался, либо всё заведено и дело в самом айфоне (фокус,
+    /// беззвучный режим). Без этой строки их не отличить, и разбирать
+    /// приходится вслепую.
+    static var onState: ((Bool, Int, String) -> Void)?
 
     private static func report() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
             let ok = settings.authorizationStatus == .authorized ||
                      settings.authorizationStatus == .provisional
-            DispatchQueue.main.async { onState?(ok) }
+            center.getPendingNotificationRequests { pending in
+                let ours = pending.filter { $0.identifier.hasPrefix(prefix) }
+                let next = ours
+                    .compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
+                    .min()
+                let when: String
+                if let next {
+                    let f = DateFormatter()
+                    f.locale = Locale(identifier: "ru_RU")
+                    f.dateFormat = "d MMM, HH:mm"
+                    when = f.string(from: next)
+                } else {
+                    when = ""
+                }
+                DispatchQueue.main.async { onState?(ok, ours.count, when) }
+            }
         }
     }
 
