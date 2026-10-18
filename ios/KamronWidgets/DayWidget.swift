@@ -122,13 +122,18 @@ struct DayState {
         tone == .night ? Palette.lime : .white
     }
 
-    /// Чем питомец занят: по значку текущего дела, а когда дел не
-    /// осталось — спит. Та же развилка, что на главном экране страницы.
+    /// Чем питомец занят: по значку текущего дела, а без дела — по
+    /// настроению, которое посчитала страница.
+    ///
+    /// По тону решать нельзя: `.night` ставится не ночью, а когда дел
+    /// больше не осталось, и его перебивает `.alarm` на полтора часа
+    /// после любого упущенного блока. В три ночи тон был бы `.day`, и
+    /// спящий питомец остался бы без луны.
     var activity: PetActivity {
         if let icon = current?.icon, !icon.isEmpty {
             return PetActivity(icon: icon)
         }
-        return tone == .night ? .sleep : .idle
+        return mood == .sleep ? .sleep : .idle
     }
 
     var textColor: Color {

@@ -95,7 +95,7 @@ private struct MediumView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
+                HStack(spacing: 11) {
                     PetScene(mood: state.mood, pose: pose, activity: state.activity, skin: state.skin, size: 30)
                     Text(now, style: .time)
                         .font(.system(size: 12, weight: .bold))

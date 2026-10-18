@@ -464,7 +464,9 @@ part('Связь с Jarvis');
 // боту приходит обратно и применяется.
 const got = { snapshots: [], acked: [], widget: [] };
 let queue = [
-  { id: 'c1', kind: 'task', data: { title: 'Позвонить в деканат', date: '2026-10-15', time: '' } },
+  // Значок — составное эмодзи из пяти кодовых точек: обрез по длине
+  // отдавал обломок, который не совпадал ни со сценой, ни с виджетом.
+  { id: 'c1', kind: 'task', data: { title: 'Позвонить в деканат', date: '2026-10-15', time: '', icon: '👨‍👩‍👦' } },
   { id: 'c2', kind: 'note', data: { body: 'Завтра занять очередь с утра' } }
 ];
 const fake = createServer((req, res) => {
@@ -536,6 +538,14 @@ ok(
   await page.evaluate(() =>
     [...document.querySelectorAll('#list .meat b')].some(b => b.textContent.includes('деканат'))
   )
+);
+ok(
+  'составной значок дошёл целиком',
+  (await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('den-kamrona-v3') || '{}');
+    const task = (raw.tasks || []).find(t => t.title.includes('деканат'));
+    return task ? task.icon : '';
+  })) === '\u{1F468}\u200D\u{1F469}\u200D\u{1F466}'
 );
 ok(
   'заметка от бота показана',

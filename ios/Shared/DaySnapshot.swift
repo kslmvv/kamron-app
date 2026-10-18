@@ -111,9 +111,9 @@ struct DaySnapshot: Codable {
         missed: 2,
         mood: "focus",
         blocks: [
-            DayBlock(id: "work", title: "Работа", icon: "💼", from: 13 * 60 + 30, to: 19 * 60 + 30, status: "open"),
-            DayBlock(id: "road", title: "Дорога домой", icon: "🚇", from: 19 * 60 + 30, to: 20 * 60 + 20, status: "open"),
-            DayBlock(id: "eng", title: "Английский", icon: "🇬🇧", from: 20 * 60 + 30, to: 21 * 60 + 30, status: "open"),
+            DayBlock(id: "work", title: "Работа", icon: "💻", from: 13 * 60 + 30, to: 19 * 60 + 30, status: "open"),
+            DayBlock(id: "road", title: "Дорога домой", icon: "🚌", from: 19 * 60 + 30, to: 20 * 60 + 20, status: "open"),
+            DayBlock(id: "eng", title: "Английский", icon: "📚", from: 20 * 60 + 30, to: 21 * 60 + 30, status: "open"),
             DayBlock(id: "film", title: "Кино", icon: "🎬", from: 22 * 60, to: 23 * 60 + 30, status: "open")
         ]
     )

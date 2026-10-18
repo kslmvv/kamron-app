@@ -6,7 +6,7 @@ import SwiftUI
 /// JavaScript, ни CSS — он показывает заранее отрисованные кадры. Поэтому
 /// занятие здесь не анимация, а предмет рядом с питомцем: ноутбук, книга,
 /// кружка. Движение даёт таймлайн, подставляя кадр раз в минуту.
-enum PetActivity: String {
+enum PetActivity {
     case work, read, write, present, health, shower, eat, drink
     case travel, flight, sport, ball, screen, game, music
     case sleep, wake, call, meeting, shop, gift, money, family
@@ -18,6 +18,11 @@ enum PetActivity: String {
     /// Таблица повторяет SCENE_BY_ICON в app.js и собрана из неё, чтобы
     /// эмодзи совпали посимвольно: у половины из них есть невидимый
     /// селектор начертания, и «☕️» вручную легко набрать как «☕».
+    ///
+    /// Второго уровня — SCENE_BY_KIND по типу блока — здесь нет: виджету
+    /// не присылают тип. Пока это безвредно, все значки из buildDay в
+    /// таблице есть. Появится режимный блок со значком вне её — страница
+    /// и виджет молча разойдутся.
     init(icon: String) {
         switch icon {
         case "⚽️": self = .ball
@@ -68,7 +73,7 @@ enum PetActivity: String {
         case .health: return "heart.fill"
         case .shower: return "shower.fill"
         case .eat: return "fork.knife"
-        case .drink: return "cup.and.saucer.fill"
+        case .drink: return "mug.fill"
         case .travel: return "bus.fill"
         case .flight: return "airplane"
         case .sport: return "dumbbell.fill"
@@ -79,16 +84,16 @@ enum PetActivity: String {
         case .sleep: return "moon.zzz.fill"
         case .wake: return "sunrise.fill"
         case .call: return "phone.fill"
-        case .meeting: return "person.2.fill"
+        case .meeting: return "bubble.left.and.bubble.right.fill"
         case .shop: return "cart.fill"
         case .gift: return "gift.fill"
         case .money: return "creditcard.fill"
-        case .family: return "person.3.fill"
+        case .family: return "person.2.fill"
         case .clean: return "sparkles"
         case .laundry: return "washer.fill"
-        case .repair: return "wrench.and.screwdriver.fill"
+        case .repair: return "wrench.fill"
         case .haircut: return "scissors"
-        case .pray: return "hands.and.sparkles.fill"
+        case .pray: return "figure.mind.and.body"
         case .photo: return "camera.fill"
         case .walk: return "figure.walk"
         case .idle: return nil
@@ -118,7 +123,9 @@ struct PetScene: View {
                 prop(symbol)
             }
         }
-        .frame(width: size * 1.16, height: size, alignment: .leading)
+        // Лишнюю ширину занимаем только когда предмет есть: иначе
+        // соседний текст съезжает вправо без всякой причины.
+        .frame(width: size * (activity.symbol == nil ? 1 : 1.22), height: size, alignment: .leading)
     }
 
     /// Спящий питомец не моргает и не вертит головой — поза замирает.
@@ -128,26 +135,26 @@ struct PetScene: View {
 
     private func prop(_ symbol: String) -> some View {
         let box = size * 0.46
+        // Кружок красим телом питомца, а не лаймом: днём фон виджета сам
+        // лаймовый, и лайм на лайме пропадает — остаётся висеть в воздухе
+        // один тёмный значок.
         return Image(systemName: symbol)
-            .font(.system(size: box * 0.56, weight: .bold))
+            .font(.system(size: box * 0.72, weight: .bold))
             .foregroundStyle(Palette.ink)
             .frame(width: box, height: box)
-            .background(
-                Circle()
-                    .fill(Palette.lime)
-                    .shadow(color: .black.opacity(0.18), radius: box * 0.08, y: box * 0.04)
-            )
-            .offset(x: size * 0.12, y: lift)
+            .background(Circle().fill(skin))
+            .offset(x: size * 0.2, y: lift)
     }
 
     /// Предмет чуть качается вместе с питомцем: кадры таймлайна идут раз
     /// в минуту, и без этого сдвига соседние минуты неотличимы.
+    /// Только вверх: кружок стоит нижней кромкой на границе рамки, и
+    /// сдвиг вниз вылезает на то, что нарисовано следом.
     private var lift: CGFloat {
-        guard !activity.isCalm else { return 0 }
-        switch pose {
-        case .glance: return size * 0.04
-        case .grin: return -size * 0.04
-        case .tilt: return size * 0.02
+        switch shownPose {
+        case .glance: return -size * 0.02
+        case .grin: return -size * 0.05
+        case .tilt: return -size * 0.03
         default: return 0
         }
     }

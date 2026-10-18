@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.2.2';
+  var VERSION = '1.2.3';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -217,6 +217,29 @@
   function sceneFor(block) {
     if (!block) return 'idle';
     return SCENE_BY_ICON[block.icon] || SCENE_BY_KIND[block.kind] || 'idle';
+  }
+
+  /* Один значок целиком.
+
+     Резать по длине нельзя ни в единицах UTF-16, ни в кодовых точках:
+     «👨‍👩‍👦» — это пять кодовых точек, связанных невидимыми соединителями,
+     и любой обрез даёт обломок, который не совпадёт ни с таблицей сцен,
+     ни с разбором в виджете. Один значок — это графемный кластер, и
+     считать их умеет только Intl.Segmenter.
+
+     Без него не режем вовсе: ограничение здесь нужно от абзаца,
+     случайно попавшего в поле значка, а не от эмодзи — самая длинная
+     семья короче шестнадцати единиц. */
+  function oneGlyph(v) {
+    var s = String(v || '').trim();
+    if (!s) return '';
+    try {
+      if (window.Intl && window.Intl.Segmenter) {
+        var first = Array.from(new window.Intl.Segmenter().segment(s))[0];
+        if (first && first.segment) return first.segment;
+      }
+    } catch (e) {}
+    return s.length <= 16 ? s : s.slice(0, 16);
   }
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
@@ -1803,7 +1826,7 @@
       var twin = S.tasks.some(function (x) { return x.title === title && x.date === date && x.time === time; });
       if (!twin) S.tasks.push({
         id: uid(), title: title, date: date, time: time,
-        icon: (p.icon && String(p.icon).slice(0, 4)) || guessIcon(title), done: false
+        icon: oneGlyph(p.icon) || guessIcon(title), done: false
       });
       return true;
     }

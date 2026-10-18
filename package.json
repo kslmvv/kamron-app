@@ -1,6 +1,6 @@
 {
   "name": "kamron-app",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "Kamron APP — режим дня, который держит: честное время, питомец с характером, фокус-режим и напоминания. PWA.",
   "type": "module",
