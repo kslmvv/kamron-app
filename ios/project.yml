@@ -19,6 +19,24 @@ settings:
     # Команду подписи Xcode подставит сам при первом запуске на устройстве.
     CODE_SIGN_STYLE: Automatic
 
+# Схемы задаём явно.
+#
+# XcodeGen пересобирает .xcodeproj с нуля, и схемы, которые Xcode завёл
+# сам, при этом пропадают. В селекторе остаётся «No Scheme», а ⌘R молча
+# ничего не делает — выглядит как «сборка не идёт».
+#
+# Запускать нужно схему приложения: она ставит на телефон и его, и
+# расширение с виджетами. Схема расширения запускает только виджет.
+schemes:
+  KamronAPP:
+    build:
+      targets:
+        KamronAPP: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
 targets:
   KamronAPP:
     type: application
