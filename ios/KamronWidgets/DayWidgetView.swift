@@ -30,7 +30,7 @@ private struct SmallView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                PetFace(mood: state.mood, pose: pose, skin: state.skin, size: 34)
+                PetScene(mood: state.mood, pose: pose, activity: state.activity, skin: state.skin, size: 34)
                 Spacer()
                 Text(now, style: .time)
                     .font(.system(size: 12, weight: .bold))
@@ -96,7 +96,7 @@ private struct MediumView: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 8) {
-                    PetFace(mood: state.mood, pose: pose, skin: state.skin, size: 30)
+                    PetScene(mood: state.mood, pose: pose, activity: state.activity, skin: state.skin, size: 30)
                     Text(now, style: .time)
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(state.dimColor)

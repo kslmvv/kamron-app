@@ -122,6 +122,15 @@ struct DayState {
         tone == .night ? Palette.lime : .white
     }
 
+    /// Чем питомец занят: по значку текущего дела, а когда дел не
+    /// осталось — спит. Та же развилка, что на главном экране страницы.
+    var activity: PetActivity {
+        if let icon = current?.icon, !icon.isEmpty {
+            return PetActivity(icon: icon)
+        }
+        return tone == .night ? .sleep : .idle
+    }
+
     var textColor: Color {
         tone == .night ? .white : Palette.ink
     }

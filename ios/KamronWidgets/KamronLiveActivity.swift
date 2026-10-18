@@ -14,7 +14,13 @@ struct KamronLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 9) {
-                        PetFace(mood: PetMood(raw: context.state.mood), pose: .still, skin: Palette.lime, size: 36)
+                        PetScene(
+                            mood: PetMood(raw: context.state.mood),
+                            pose: .still,
+                            activity: PetActivity(icon: context.state.icon),
+                            skin: Palette.lime,
+                            size: 36
+                        )
                         VStack(alignment: .leading, spacing: 2) {
                             Text(context.state.title)
                                 .font(.system(size: 15, weight: .heavy))
@@ -70,9 +76,10 @@ private struct LockScreenCard: View {
     var body: some View {
         VStack(spacing: 11) {
             HStack(alignment: .center, spacing: 13) {
-                PetFace(
+                PetScene(
                     mood: state.done ? .happy : PetMood(raw: state.mood),
                     pose: .still,
+                    activity: PetActivity(icon: state.icon),
                     skin: Palette.lime,
                     size: 50
                 )
