@@ -7,7 +7,7 @@ import SwiftUI
 struct KamronLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: KamronActivityAttributes.self) { context in
-            LockScreenCard(state: context.state, dateKey: context.attributes.dateKey)
+            LockScreenCard(state: context.state)
                 .activityBackgroundTint(Palette.liveBack.opacity(0.92))
                 .activitySystemActionForegroundColor(Palette.lime)
         } dynamicIsland: { context in
@@ -71,23 +71,38 @@ struct KamronLiveActivity: Widget {
 @available(iOS 16.2, *)
 private struct LockScreenCard: View {
     let state: KamronActivityAttributes.ContentState
-    let dateKey: String
+
+    /// Предмет занятия у питомца есть не всегда: значок вне таблицы
+    /// (а «📌» — это дефолт для любой задачи без своего) даёт `.idle`, и
+    /// питомец садится без ничего. Эмодзи рядом с названием в этом случае
+    /// остаётся единственным намёком на то, что за дело, — тогда его и
+    /// показываем. Когда предмет есть, эмодзи было бы тем же дважды.
+    private var activity: PetActivity { PetActivity(icon: state.icon) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(state.done ? "ЗАКРЫТО" : "СЕЙЧАС")
-                        .font(.system(size: 10, weight: .heavy))
-                        .tracking(1.4)
-                        .foregroundStyle(.white.opacity(0.42))
+                    /* «ЗАКРЫТО» здесь и «Готово» ниже — одно и то же дважды,
+                       ровно тот повтор, ради которого убрано эмодзи. Для
+                       закрытого дела хватает нижней строки. */
+                    if !state.done {
+                        Text("СЕЙЧАС")
+                            .font(.system(size: 10, weight: .heavy))
+                            .tracking(1.4)
+                            .foregroundStyle(.secondary)
+                    }
 
-                    /* Значок занятия питомец показывает предметом, поэтому
-                       эмодзи рядом с названием — то же самое дважды. */
-                    Text(state.title)
-                        .font(.system(size: 21, weight: .heavy))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    HStack(spacing: 6) {
+                        if activity.symbol == nil, !state.icon.isEmpty {
+                            Text(state.icon)
+                                .font(.system(size: 15))
+                        }
+                        Text(state.title)
+                            .font(.system(size: 21, weight: .heavy))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
                 }
 
                 Spacer(minLength: 6)
@@ -95,7 +110,7 @@ private struct LockScreenCard: View {
                 PetScene(
                     mood: state.done ? .happy : PetMood(raw: state.mood),
                     pose: .still,
-                    activity: PetActivity(icon: state.icon),
+                    activity: activity,
                     skin: Palette.lime,
                     size: 42
                 )
@@ -106,27 +121,29 @@ private struct LockScreenCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if state.done {
                     /* Отсчёт у закрытого дела показывать нечего: он бы
-                       продолжал бежать к концу окна, которое уже не важно. */
+                       продолжал бежать к концу окна, которое уже не важно.
+                       Размер тот же, что у числа, иначе карточка заметно
+                       подпрыгивает в момент отметки. */
                     Text("Готово")
-                        .font(.system(size: 26, weight: .heavy))
+                        .font(.system(size: 30, weight: .heavy))
                         .foregroundStyle(Palette.lime)
-                    Text(time(state.startedAt) + " — " + time(state.endsAt))
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.45))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    Caption(time(state.startedAt) + " — " + time(state.endsAt))
                 } else {
                     Remaining(end: state.endsAt, big: true, tint: Palette.lime, stacked: false)
-                    Text("осталось · до " + time(state.endsAt))
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.45))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    Caption("осталось · до " + time(state.endsAt))
                 }
                 Spacer(minLength: 0)
             }
 
-            Bar(from: state.startedAt, to: state.endsAt)
+            /* У закрытого дела полоса заполнена и стоит. Живая продолжала бы
+               ползти к концу окна — тот самый отсчёт, который убран выше,
+               просто в другом виде. */
+            if state.done {
+                Bar(full: true)
+            } else {
+                Bar(from: state.startedAt, to: state.endsAt)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -151,28 +168,45 @@ private struct Remaining: View {
     private var size: CGFloat { big ? (stacked ? 22 : 30) : 19 }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            if DaySnapshot.ticking(until: end) {
-                Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
-                    .font(.system(size: size, weight: .heavy))
-                    .monospacedDigit()
-                    .foregroundStyle(tint)
-                    /* Ширину запираем только в стопке: бегущие цифры разной
-                       ширины иначе дёргают соседей. В строке карточки текст
-                       стоит справа от числа, и фиксированная рамка оставила
-                       бы между ними дыру. */
-                    .frame(maxWidth: stacked ? (big ? 86 : 78) : nil, alignment: .trailing)
-            } else {
-                Text(DaySnapshot.rough(until: end))
-                    .font(.system(size: big ? (stacked ? 20 : 30) : 17, weight: .heavy))
-                    .monospacedDigit()
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
+        VStack(alignment: stacked ? .trailing : .leading, spacing: 2) {
+            Group {
+                if DaySnapshot.ticking(until: end) {
+                    Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
+                        /* Ширину запираем только в стопке: формат по дороге
+                           меняется («1:29:59» → «29:59»), и без рамки соседний
+                           текст прыгает. В строке карточки подпись стоит
+                           вплотную справа, и рамка оставила бы между ними дыру. */
+                        .frame(maxWidth: stacked ? (big ? 86 : 78) : nil,
+                               alignment: stacked ? .trailing : .leading)
+                } else {
+                    /* Посчитанную строку здесь писать нельзя.
+
+                       Своё «12 ч 26» считается один раз, в момент отрисовки, а
+                       живое уведомление перерисовывается только когда
+                       приложение успело прислать обновление — таймлайна, как у
+                       виджета, у него нет. Для дела на шесть часов это значит,
+                       что число застынет на «6 ч» до самого вечера и начнёт
+                       спорить с собственной подписью «до 19:30».
+
+                       Системный относительный текст система обновляет сама,
+                       без нас, и на длинном остатке показывает часы с
+                       минутами, а не секунды — ровно то, что нужно. */
+                    Text(end, style: .relative)
+                }
             }
+            .font(.system(size: size, weight: .heavy))
+            .monospacedDigit()
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            /* Сжиматься первой должна подпись, а не главное число: «1:29:59»,
+               обрезанное до «1:29:…», хуже мелкой подписи рядом. */
+            .minimumScaleFactor(0.75)
+            .layoutPriority(1)
+
             if stacked {
                 Text("осталось")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.45))
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -188,30 +222,62 @@ private struct CompactRemaining: View {
                 Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
                     .frame(maxWidth: 44)
             } else {
-                Text(DaySnapshot.rough(until: end).replacingOccurrences(of: " мин", with: "м"))
+                /* Тоже системный относительный текст, а не своя строка: в
+                   острове она застывала бы ровно так же, как на карточке, и
+                   висела бы перед глазами весь день. Ширину ограничиваем —
+                   места здесь мало. */
+                Text(end, style: .relative)
+                    .frame(maxWidth: 58)
             }
         }
         .font(.system(size: 13, weight: .heavy))
         .monospacedDigit()
         .foregroundStyle(Palette.lime)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
+}
+
+/// Подпись рядом с главным числом.
+private struct Caption: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
     }
 }
 
 /// Полоса прогресса идёт сама: система двигает её без участия приложения.
 private struct Bar: View {
-    let from: Date
-    let to: Date
+    var from: Date = .distantPast
+    var to: Date = .distantPast
+    /// Заполненная и неподвижная — для закрытого дела.
+    var full: Bool = false
 
     var body: some View {
-        ProgressView(timerInterval: from...max(to, from.addingTimeInterval(60)), countsDown: false) {
-            EmptyView()
-        } currentValueLabel: {
-            EmptyView()
+        Group {
+            if full {
+                GeometryReader { geo in
+                    Capsule().fill(Palette.lime).frame(width: geo.size.width)
+                }
+                .frame(height: 4)
+            } else {
+                ProgressView(timerInterval: from...max(to, from.addingTimeInterval(60)), countsDown: false) {
+                    EmptyView()
+                } currentValueLabel: {
+                    EmptyView()
+                }
+                .progressViewStyle(.linear)
+                .tint(Palette.lime)
+                .labelsHidden()
+                .scaleEffect(x: 1, y: 0.7, anchor: .center)
+            }
         }
-        .progressViewStyle(.linear)
-        .tint(Palette.lime)
-        .labelsHidden()
-        .scaleEffect(x: 1, y: 0.7, anchor: .center)
     }
 }
 

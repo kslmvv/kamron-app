@@ -147,7 +147,7 @@ private struct SmallView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
 
-                Left(end: DaySnapshot.moment(block.to), color: state.dimColor)
+                Left(end: DaySnapshot.moment(block.to), color: state.dimColor, now: now)
                     .padding(.top, 2)
 
                 ProgressView(
@@ -214,7 +214,7 @@ private struct MediumView: View {
 
                     Spacer(minLength: 6)
 
-                    Left(end: DaySnapshot.moment(block.to), color: state.textColor, big: true)
+                    Left(end: DaySnapshot.moment(block.to), color: state.textColor, big: true, now: now)
 
                     if #available(iOS 17.0, *), !block.isDone {
                         Button(intent: MarkDoneIntent(
@@ -292,10 +292,20 @@ private struct Left: View {
     let end: Date
     var color: Color
     var big: Bool = false
+    /* Момент кадра, а не Date().
+
+       Кадры таймлайна система рисует заранее, пачкой: Date() внутри тела
+       даёт время отрисовки, а не время показа, и остаток в кадре на 18:40
+       оказывался посчитанным по 18:00. Соседний LockRectangle так и
+       делает — здесь этого просто не хватало.
+
+       Без значения по умолчанию намеренно: со значением следующий вызов
+       молча получил бы Date() и ту же ошибку, а так её покажет компилятор. */
+    let now: Date
 
     var body: some View {
         HStack(spacing: 4) {
-            if DaySnapshot.ticking(until: end) {
+            if DaySnapshot.ticking(until: end, from: now) {
                 Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
                     .font(.system(size: big ? 26 : 15, weight: .heavy))
                     .monospacedDigit()
@@ -304,7 +314,7 @@ private struct Left: View {
             } else {
                 // «5 ч 10 мин» в 24 пункта шире колонки. Без ужатия строка
                 // обрежется до «5 ч 1…» — а это уже не остаток, а мусор.
-                Text(DaySnapshot.rough(until: end))
+                Text(DaySnapshot.rough(until: end, from: now))
                     .font(.system(size: big ? 24 : 15, weight: .heavy))
                     .monospacedDigit()
                     .foregroundStyle(color)
