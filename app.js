@@ -1238,7 +1238,7 @@
         '<button class="btn ghost" id="lLoad">Восстановить из копии</button>' +
         '<p class="empty" style="text-align:left;line-height:1.5">Копия уходит сама при каждом изменении. ' +
         'Если очистишь историю Safari, открой приложение — оно вернёт данные само, пока ключ на месте. ' +
-        'Если и ключ стёрся, попроси у Jarvis команду <b>/связь</b>: он пришлёт ссылку, которая вернёт всё одним нажатием.</p>';
+        'Если и ключ стёрся, попроси у Jarvis команду <b>/связь</b>: он пришлёт ссылку, которая вернёт всё одним нажатием.</p>' +
         '<p class="empty" id="lState" style="text-align:left;line-height:1.5">Через этот адрес бот видит твой день и кладёт сюда то, что ты ему наговорил. Ключ тот же, что в переменной APP_ACCESS_TOKEN на сервере.</p>';
       var u = b.querySelector('#lUrl'), k = b.querySelector('#lTok'), st = b.querySelector('#lState');
       u.value = S.link.url || ''; k.value = S.link.token || '';
