@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.3.0';
+  var VERSION = '1.3.1';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -63,16 +63,7 @@
         S.sched = raw.sched || null;
         S.review = raw.review || {}; S.focus = raw.focus || {};
         S.reviewAt = raw.reviewAt || '21:30';
-        /* Дописываем в умолчания, а не подменяем их целиком: в памяти
-           может лежать объект от старой версии, где нового переключателя
-           ещё нет, и тогда он остался бы undefined. Для страницы это
-           молча «выключено», а для нативного плана — поле, которого нет
-           в JSON, и весь план перестаёт разбираться. */
-        if (raw.notif) {
-          Object.keys(S.notif).forEach(function (k) {
-            if (typeof raw.notif[k] === 'boolean') S.notif[k] = raw.notif[k];
-          });
-        }
+        normalizeNotif(raw.notif);
         S.fired = raw.fired || {};
         S.link = raw.link || { url: '', token: '' };
         S.notes = raw.notes || [];
@@ -86,6 +77,22 @@
       { id: 'h3', title: 'Чтение', icon: '📖', times: 1, log: {} }
     ];
   }
+  /* Переключатели напоминаний дописываем в умолчания, а не подменяем их
+     целиком.
+
+     Объект мог быть записан прошлой версией, где нового переключателя
+     ещё не было. Для страницы недостающее поле — молча «выключено», а
+     для нативного плана это поле, которого нет в JSON: разбор плана
+     строгий, и весь план отваливается целиком, без следа. Поэтому
+     нормализация одна на оба входа — и загрузку с диска, и возврат из
+     копии, снятой когда-то давно. */
+  function normalizeNotif(raw) {
+    if (!raw || typeof raw !== 'object') return;
+    Object.keys(S.notif).forEach(function (k) {
+      if (typeof raw[k] === 'boolean') S.notif[k] = raw[k];
+    });
+  }
+
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
     syncSoon();
@@ -1214,7 +1221,13 @@
   el.setBack.addEventListener('click', function () { el.setSub.hidden = true; el.setRoot.hidden = false; });
   function openSub(name) { el.setRoot.hidden = true; el.setSub.hidden = false; renderSub(name); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
+  /* Какой подраздел настроек сейчас открыт: оболочка может сообщить о
+     разрешении в любой момент, и перерисовывать нужно только если
+     человек смотрит именно на экран напоминаний. */
+  var subOpen = '';
+
   function renderSub(name) {
+    subOpen = name;
     var b = el.subBody; b.innerHTML = '';
     if (name === 'day') {
       b.innerHTML = '<div class="sec-head"><span class="cap">Режим дня</span><small>по будням</small></div><div class="card glass" id="ff"></div>' +
@@ -1225,7 +1238,21 @@
         row.innerHTML = '<label for="f-' + f.key + '">' + f.label + '</label><input id="f-' + f.key + '" type="' + (f.type === 'time' ? 'time' : 'number') + '">';
         var inp = row.querySelector('input'); inp.value = S.cfg[f.key];
         if (f.type === 'num') { inp.min = 5; inp.max = 300; inp.step = 5; }
-        inp.addEventListener('change', function () { S.cfg[f.key] = f.type === 'num' ? Number(inp.value) : inp.value; save(); });
+        inp.addEventListener('change', function () {
+          if (f.type === 'num') {
+            /* min/max в разметке — подсказка браузеру, а не запрет: руками
+               туда вводится и «55.5», и пустота. Дробная минута разъезжается
+               по всему режиму дня, а в нативный план уезжает временем,
+               которое система не примет. Поэтому чиним здесь. */
+            var n = Math.round(Number(inp.value));
+            if (!isFinite(n)) n = S.cfg[f.key];
+            S.cfg[f.key] = Math.min(300, Math.max(5, n));
+            inp.value = S.cfg[f.key];
+          } else {
+            S.cfg[f.key] = inp.value;
+          }
+          save();
+        });
         box.appendChild(row);
       });
     }
@@ -1299,11 +1326,17 @@
          влияет. Кнопка «Разрешить» там только путала бы — её нет, а
          вопрос айфон задаст сам, когда включишь переключатель. */
       var native = !!nativeBridge();
-      var perm = native ? 'granted'
+      var perm = native
+        ? (nativeNotifOK === false ? 'denied' : 'granted')
         : ('Notification' in window) ? Notification.permission : 'unsupported';
       b.innerHTML = '<div class="sec-head"><span class="cap">Напоминания</span><small>питомец стучится сам</small></div>' +
-        (perm === 'granted' ? '' : '<button class="btn" id="askPerm" style="margin-bottom:12px">' +
-          (perm === 'denied' ? 'Запрещено — включи в настройках браузера' : 'Разрешить уведомления') + '</button>') +
+        (perm === 'granted' ? '' : '<button class="btn" id="askPerm" style="margin-bottom:12px" ' +
+          (native ? 'disabled' : '') + '>' +
+          (perm === 'denied'
+            ? (native
+               ? 'Запрещено — включи в Настройках айфона → Kamron'
+               : 'Запрещено — включи в настройках браузера')
+            : 'Разрешить уведомления') + '</button>') +
         '<div class="card glass">' +
         '<div class="field"><label for="nOn">Напоминать</label><input type="checkbox" id="nOn" style="width:24px;height:24px;accent-color:#151813"></div>' +
         '<div class="field"><label for="nPre">За 10 минут до дела</label><input type="checkbox" id="nPre" style="width:24px;height:24px;accent-color:#151813"></div>' +
@@ -1330,13 +1363,24 @@
       });
       [['nOn', 'on'], ['nPre', 'pre'], ['nWin', 'win'], ['nEnd', 'end'], ['nRev', 'rev']].forEach(function (pair) {
         var c = b.querySelector('#' + pair[0]); c.checked = !!S.notif[pair[1]];
-        c.addEventListener('change', function () { S.notif[pair[1]] = c.checked; save(); el.notifSub.textContent = notifSub(); });
+        c.addEventListener('change', function () {
+          S.notif[pair[1]] = c.checked; save();
+          /* Сразу, а не ближайшим тиком: от этого переключателя зависит
+             системный запрос разрешения, и выскочить он должен тут же,
+             пока человек смотрит на экран, а не через полминуты где-то. */
+          nativeSoon(true);
+          el.notifSub.textContent = notifSub();
+        });
       });
       var at = b.querySelector('#nAt'); at.value = S.reviewAt;
-      at.addEventListener('change', function () { S.reviewAt = at.value || '21:30'; save(); });
+      at.addEventListener('change', function () { S.reviewAt = at.value || '21:30'; save(); nativeSoon(true); });
       b.querySelector('#nTest').addEventListener('click', function () {
         var bridge = nativeBridge();
         if (bridge) {
+          if (nativeNotifOK === false) {
+            toast('Айфон не разрешил уведомления — включи их в Настройках.');
+            return;
+          }
           /* Вопрос у человека ровно один: дойдёт ли уведомление при
              закрытом приложении. Всплывашка на это не отвечает, поэтому
              просим систему прислать настоящее через пять секунд. */
@@ -1464,6 +1508,14 @@
     return linkState === 'fail' ? 'настроена, сервер молчит' : 'настроена';
   }
   function notifSub() {
+    /* В сборке разрешение даёт система, и про него знает только
+       оболочка. Notification.permission внутри обёртки свой и к
+       уведомлениям айфона отношения не имеет — спрашивать его здесь
+       значит показывать «не разрешены» при исправно работающих. */
+    if (nativeBridge()) {
+      if (nativeNotifOK === false) return 'айфон их запретил';
+      return S.notif.on ? 'включены' : 'выключены';
+    }
     if (!('Notification' in window)) return 'браузер не поддерживает';
     if (Notification.permission !== 'granted') return 'не разрешены';
     return S.notif.on ? 'включены' : 'разрешены, но выключены';
@@ -1812,18 +1864,27 @@
       var dk = dateKey(d), m = marks(dk);
       days.push({
         dateKey: dk,
-        blocks: buildDay(d).filter(function (b) { return !b.free; }).map(function (b) {
-          return {
-            id: b.id,
-            title: b.name,
-            icon: b.icon || '',
-            from: b.from,
-            to: b.to,
-            kind: b.kind || '',
-            checkable: isCheckable(b),
-            done: m.indexOf(b.id) >= 0
-          };
-        })
+        /* Разбор, который уже закрыт, вечером напоминать не о чем. */
+        reviewClosed: !!(S.review[dk] && S.review[dk].closed),
+        blocks: buildDay(d)
+          .filter(function (b) {
+            /* Время должно быть целым и конечным. Дробная минута из
+               настроек («обед 55.5») или NaN из повреждённой памяти не
+               разберутся на той стороне, и из-за одного блока молча
+               пропадёт весь план — а с ним все напоминания. */
+            return !b.free && isFinite(b.from) && isFinite(b.to);
+          })
+          .map(function (b) {
+            return {
+              id: b.id,
+              title: b.name,
+              from: Math.round(b.from),
+              to: Math.round(b.to),
+              kind: b.kind || '',
+              checkable: isCheckable(b),
+              done: m.indexOf(b.id) >= 0
+            };
+          })
       });
     }
     return { reviewAt: toMin(S.reviewAt), notif: S.notif, days: days };
@@ -1838,7 +1899,11 @@
   function nativeSend() {
     var bridge = nativeBridge();
     if (!bridge) return;
-    var day = nativeDay(), body = JSON.stringify(day);
+    /* Метку времени из сравнения выкидываем: она меняется каждый раз, и
+       со всем снимком сравнение не имело бы смысла. */
+    var day = nativeDay(), body = JSON.stringify(day, function (k, v) {
+      return k === 'updatedAt' ? undefined : v;
+    });
     if (body !== natLast) {
       natLast = body;
       try { bridge.postMessage({ kind: 'day', day: day }); } catch (e) {}
@@ -1918,6 +1983,18 @@
       nativeSoon(true);
     });
     return true;
+  };
+
+  /* Оболочка сообщает, разрешил ли человек уведомления системе. Сама
+     страница этого не знает: Notification внутри обёртки свой и к
+     уведомлениям айфона отношения не имеет. */
+  var nativeNotifOK = null;
+  window.kamronNotifState = function (granted) {
+    var next = !!granted;
+    if (next === nativeNotifOK) return;
+    nativeNotifOK = next;
+    el.notifSub.textContent = notifSub();
+    if (subOpen === 'notif' && !el.setSub.hidden) renderSub('notif');
   };
 
   window.kamronApply = function (list) {
@@ -2070,8 +2147,17 @@
         var copy = d && d.state;
         if (!copy || typeof copy !== 'object') return false;
         var link = S.link;           // ключ берём свой: копия могла быть снята до его ввода
+        var defaults = S.notif;      // умолчания переключателей пригодятся ниже
         Object.keys(copy).forEach(function (key) { S[key] = copy[key]; });
         S.link = link;
+        /* Копия могла быть снята версией, в которой переключателя ещё не
+           было. Та же нормализация, что при загрузке с диска: иначе
+           нативный план перестанет разбираться, и напоминания пропадут
+           молча — ровно на первом запуске сборки, где возврат из копии и
+           происходит. */
+        var fromCopy = S.notif;
+        S.notif = defaults;
+        normalizeNotif(fromCopy);
         lastBackup = '';
         save();
         renderToday();

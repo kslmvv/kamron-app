@@ -721,6 +721,40 @@ const trickyToken = await copyPage.evaluate(() => {
 });
 ok('ключ со «+», «/» и «=» дошёл без искажений', trickyToken === tricky);
 
+/* Копия, снятая старой версией, не должна обеднять переключатели
+   напоминаний. Недостающее поле — это не «выключено»: нативный план
+   разбирается строго, и без одного поля отваливается целиком, унося с
+   собой все уведомления. Путь неслучайный — возврат из копии происходит
+   как раз на первом запуске сборки. */
+const afterOldCopy = await copyPage.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3') || '{}');
+  s.notif = { on: true, pre: false };   // формат до появления win/end/rev
+  // Связь убираем: иначе страница вернётся из копии на сервере и
+  // перезапишет подложенное — здесь проверяется путь загрузки с диска.
+  s.link = { url: '', token: '' };
+  localStorage.setItem('den-kamrona-v3', JSON.stringify(s));
+  return null;
+});
+void afterOldCopy;
+await copyPage.reload();
+await copyPage.waitForTimeout(500);
+/* Читаем сами переключатели, а не localStorage: на диск состояние
+   уходит только при следующем save(), и там ещё лежит старый объект,
+   тогда как в памяти он уже дополнен. */
+const merged = await copyPage.evaluate(() => {
+  document.getElementById('navSetup').click();
+  document.querySelector('[data-go="notif"]').click();
+  const get = id => document.getElementById(id);
+  const out = {};
+  [['on', 'nOn'], ['pre', 'nPre'], ['win', 'nWin'], ['end', 'nEnd'], ['rev', 'nRev']]
+    .forEach(([key, id]) => { const el = get(id); out[key] = el ? el.checked : null; });
+  return out;
+});
+ok('старый набор переключателей дополнен умолчаниями',
+  ['win', 'end', 'rev'].every(k => merged[k] === true));
+ok('заданные в копии значения сохранились',
+  merged.on === true && merged.pre === false);
+
 /* Ссылку из Telegram человек вставляет в поле ключа целиком — в нативной
    сборке это единственный ручной путь, потому что ссылка из Telegram
    открывается в Safari, а у приложения своё хранилище. */
@@ -787,11 +821,19 @@ ok(
 ok('план напоминаний ушёл в оболочку', !!plan);
 ok('в плане три дня подряд', !!plan && plan.days.length === 3 &&
   plan.days[0].dateKey < plan.days[1].dateKey && plan.days[1].dateKey < plan.days[2].dateKey);
+/* Сравниваем с днём из снимка, а не с часами Node: в тесте время
+   страницы заморожено, и её «сегодня» — не сегодня здесь. */
+ok('первый день плана — сегодняшний', !!plan && !!day &&
+  plan.days[0].dateKey === day.dateKey);
+/* Целое и конечное, а не просто «number»: NaN и 55.5 — тоже number, и
+   именно они не разберутся на той стороне, уронив весь план молча. */
 ok('у блоков плана есть всё для будильника', !!plan && plan.days[0].blocks.length > 0 &&
   plan.days[0].blocks.every(b =>
-    typeof b.from === 'number' && typeof b.to === 'number' &&
+    Number.isInteger(b.from) && Number.isInteger(b.to) &&
     typeof b.checkable === 'boolean' && typeof b.done === 'boolean' &&
     typeof b.kind === 'string' && typeof b.title === 'string'));
+ok('у дней плана есть признак закрытого разбора', !!plan &&
+  plan.days.every(d => typeof d.reviewClosed === 'boolean'));
 ok('переключатели переданы все', !!plan &&
   ['on', 'pre', 'win', 'end', 'rev'].every(k => typeof plan.notif[k] === 'boolean'));
 ok('время разбора — минуты от полуночи', !!plan &&

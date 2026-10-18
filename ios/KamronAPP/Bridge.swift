@@ -60,6 +60,15 @@ final class Bridge: NSObject, WKScriptMessageHandler {
               let raw = try? JSONSerialization.data(withJSONObject: plan),
               let parsed = try? JSONDecoder().decode(NotifPlan.self, from: raw) else { return }
 
+        /* Страница про системное разрешение ничего не знает: Notification
+           внутри обёртки свой и к уведомлениям айфона отношения не имеет.
+           Без ответа экран настроек показывал бы «разрешено» тому, кто
+           нажал «Не разрешать». */
+        Reminders.onState = { [weak self] granted in
+            self?.webView?.evaluateJavaScript(
+                "window.kamronNotifState && window.kamronNotifState(\(granted))"
+            )
+        }
         Reminders.apply(parsed)
     }
 
