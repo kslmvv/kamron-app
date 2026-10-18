@@ -50,7 +50,7 @@ npm install
 npm run serve     # локальный сервер
 npm run build     # проставить версию в sw.js и app.js
 npm run check     # поиск неопределённых ссылок в app.js
-npm test          # сквозной тест в браузере (58 проверок)
+npm test          # сквозной тест в браузере (102 проверки)
 npx playwright install chromium   # один раз, если браузера нет
 ```
 
@@ -66,17 +66,23 @@ ES-модули запрещены политикой источников.
 
 ```
 index.html, styles.css, app.js   приложение
+anim/                            собранные сцены занятий питомца
 sw.js, manifest.webmanifest      офлайн и установка на телефон
 icons/, logos/                   знак К
 tests/                           сквозной тест
-tools/                           версия, иконки, локальный сервер
+tools/                           версия, иконки, локальный сервер, полнота сборки
+tools/scenes/                    исходники сцен: питомец и описания сцен
 legacy/                          прошлая версия приложения (не подключена)
-server/                          сервер Jarvis на Railway (остановлен)
-telegram-call/                   голосовые звонки Jarvis (остановлены)
-ios/                             обёртка WKWebView для сборки в Xcode
+server/                          сервер Jarvis на Railway
+jarvis-bot/                      голосовой помощник в Telegram
+telegram-call/                   спайк настоящих звонков (не в работе)
+ios/                             обёртка WKWebView, виджет, живое уведомление
 ```
+
+Сцены собираются отдельно: `python3 tools/scenes/build.py` переписывает
+`anim/scenes.js` и `anim/scenes.css` из исходников в `tools/scenes/`.
 
 ### Что дальше
 
 Аккаунт и синхронизация между устройствами, настоящие пуш-уведомления с сервера,
-виджет и Live Activity на айфоне, возвращение голосового Jarvis.
+позы питомца в виджете под текущее занятие, возвращение голосового Jarvis.
