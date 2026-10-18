@@ -764,7 +764,12 @@ await wp.goto(base, { waitUntil: 'networkidle' });
 await wp.waitForTimeout(400);
 
 const sent = await wp.evaluate(() => window.__sent);
-const day = sent.length ? sent[sent.length - 1].day : null;
+/* Мост несёт два вида сообщений: снимок «что сейчас» для виджета и план
+   напоминаний на три дня вперёд. Берём по виду, а не последнее подряд. */
+const dayMsgs = sent.filter(m => m.kind === 'day');
+const planMsgs = sent.filter(m => m.kind === 'plan');
+const day = dayMsgs.length ? dayMsgs[dayMsgs.length - 1].day : null;
+const plan = planMsgs.length ? planMsgs[planMsgs.length - 1].plan : null;
 ok('снимок дня ушёл виджету', !!day && sent[0].kind === 'day');
 ok(
   'в снимке есть блоки со временем',
@@ -776,12 +781,29 @@ ok(
   !!day && ['calm', 'focus', 'happy', 'worry', 'angry', 'sleep'].includes(day.mood)
 );
 
+/* План напоминаний. Будильники заводит система заранее, поэтому плану
+   нужны дни вперёд, а не только сегодняшний, и все пять переключателей:
+   отсутствующее поле ломает разбор плана целиком. */
+ok('план напоминаний ушёл в оболочку', !!plan);
+ok('в плане три дня подряд', !!plan && plan.days.length === 3 &&
+  plan.days[0].dateKey < plan.days[1].dateKey && plan.days[1].dateKey < plan.days[2].dateKey);
+ok('у блоков плана есть всё для будильника', !!plan && plan.days[0].blocks.length > 0 &&
+  plan.days[0].blocks.every(b =>
+    typeof b.from === 'number' && typeof b.to === 'number' &&
+    typeof b.checkable === 'boolean' && typeof b.done === 'boolean' &&
+    typeof b.kind === 'string' && typeof b.title === 'string'));
+ok('переключатели переданы все', !!plan &&
+  ['on', 'pre', 'win', 'end', 'rev'].every(k => typeof plan.notif[k] === 'boolean'));
+ok('время разбора — минуты от полуночи', !!plan &&
+  typeof plan.reviewAt === 'number' && plan.reviewAt >= 0 && plan.reviewAt < 1440);
+
 /* Отметка из виджета, сделанная вовремя, засчитывается. */
 const honest = await wp.evaluate(() => {
-  const block = window.__sent[window.__sent.length - 1].day.blocks.find(
+  const days = window.__sent.filter(m => m.kind === 'day');
+  const day = days[days.length - 1].day;
+  const block = day.blocks.find(
     b => b.id.indexOf('work') === 0 || b.id.indexOf('lesson') === 0
   );
-  const day = window.__sent[window.__sent.length - 1].day;
   const at = new Date();
   at.setHours(Math.floor((block.from + block.to) / 2 / 60), 0, 0, 0);
   window.kamronApply([{ id: block.id, dateKey: day.dateKey, at: at.getTime() / 1000 }]);
@@ -793,7 +815,8 @@ ok('отметка из виджета вовремя засчитана', hones
 /* А сделанная после того, как дело прошло, — нет: иначе через виджет
    можно было бы обойти честную блокировку времени. */
 const late = await wp.evaluate(() => {
-  const day = window.__sent[window.__sent.length - 1].day;
+  const days = window.__sent.filter(m => m.kind === 'day');
+  const day = days[days.length - 1].day;
   const block = day.blocks.find(
     b => b.status === 'missed' || b.to + 15 < new Date().getHours() * 60 + new Date().getMinutes()
   );

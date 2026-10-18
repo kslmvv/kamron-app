@@ -10,6 +10,13 @@ import SwiftUI
 
 @main
 struct KamronAPPApp: App {
+    /// Категории и делегат нужны до первой доставки: нажатие «Сделал»
+    /// система принесёт в делегата, которого на тот момент уже поздно
+    /// назначать.
+    init() {
+        Reminders.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

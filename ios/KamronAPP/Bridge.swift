@@ -27,6 +27,10 @@ final class Bridge: NSObject, WKScriptMessageHandler {
         switch kind {
         case "day":
             accept(day: body["day"])
+        case "plan":
+            accept(plan: body["plan"])
+        case "testNotif":
+            Reminders.test()
         case "ready":
             flushMarks()
         default:
@@ -45,6 +49,18 @@ final class Bridge: NSObject, WKScriptMessageHandler {
         WidgetCenter.shared.reloadAllTimelines()
         LiveDay.sync(with: snapshot)
         flushMarks()
+    }
+
+    // MARK: - План напоминаний
+
+    /// Напоминания заводятся на несколько дней вперёд, поэтому приходят
+    /// отдельно от снимка: снимок — это «что сейчас», а здесь «что будет».
+    private func accept(plan: Any?) {
+        guard let plan,
+              let raw = try? JSONSerialization.data(withJSONObject: plan),
+              let parsed = try? JSONDecoder().decode(NotifPlan.self, from: raw) else { return }
+
+        Reminders.apply(parsed)
     }
 
     // MARK: - Передача ключа странице

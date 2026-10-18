@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.2.5';
+  var VERSION = '1.3.0';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -63,7 +63,16 @@
         S.sched = raw.sched || null;
         S.review = raw.review || {}; S.focus = raw.focus || {};
         S.reviewAt = raw.reviewAt || '21:30';
-        if (raw.notif) S.notif = raw.notif;
+        /* Дописываем в умолчания, а не подменяем их целиком: в памяти
+           может лежать объект от старой версии, где нового переключателя
+           ещё нет, и тогда он остался бы undefined. Для страницы это
+           молча «выключено», а для нативного плана — поле, которого нет
+           в JSON, и весь план перестаёт разбираться. */
+        if (raw.notif) {
+          Object.keys(S.notif).forEach(function (k) {
+            if (typeof raw.notif[k] === 'boolean') S.notif[k] = raw.notif[k];
+          });
+        }
         S.fired = raw.fired || {};
         S.link = raw.link || { url: '', token: '' };
         S.notes = raw.notes || [];
@@ -1285,7 +1294,13 @@
       });
     }
     if (name === 'notif') {
-      var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+      /* В нативной сборке разрешение спрашивает система, а не страница:
+         Notification.permission внутри обёртки свой и ни на что не
+         влияет. Кнопка «Разрешить» там только путала бы — её нет, а
+         вопрос айфон задаст сам, когда включишь переключатель. */
+      var native = !!nativeBridge();
+      var perm = native ? 'granted'
+        : ('Notification' in window) ? Notification.permission : 'unsupported';
       b.innerHTML = '<div class="sec-head"><span class="cap">Напоминания</span><small>питомец стучится сам</small></div>' +
         (perm === 'granted' ? '' : '<button class="btn" id="askPerm" style="margin-bottom:12px">' +
           (perm === 'denied' ? 'Запрещено — включи в настройках браузера' : 'Разрешить уведомления') + '</button>') +
@@ -1298,8 +1313,12 @@
         '<div class="field"><label for="nAt">Время разбора</label><input type="time" id="nAt"></div>' +
         '</div>' +
         '<button class="btn ghost" id="nTest" style="margin-top:4px">Проверить уведомление</button>' +
-        '<p class="empty" style="text-align:left;line-height:1.5">Пока приложение живёт в браузере, напоминания приходят, когда оно открыто или недавно свёрнуто. ' +
-        'Чтобы они приходили всегда, приложение нужно добавить на домашний экран айфона — это следующий шаг.</p>';
+        '<p class="empty" style="text-align:left;line-height:1.5">' +
+        (native
+          ? 'Напоминания заводит сам айфон на три дня вперёд, поэтому приходят даже при закрытом приложении и без интернета. ' +
+            'В уведомлении о деле есть кнопка «Сделал» — отметка применится, когда откроешь приложение.'
+          : 'Пока приложение живёт в браузере, напоминания приходят, только когда оно открыто. ' +
+            'Чтобы они приходили всегда, нужна сборка на айфон.') + '</p>';
       var ask = b.querySelector('#askPerm');
       if (ask) ask.addEventListener('click', function () {
         if (!('Notification' in window)) { toast('Браузер не умеет уведомления.'); return; }
@@ -1316,6 +1335,15 @@
       var at = b.querySelector('#nAt'); at.value = S.reviewAt;
       at.addEventListener('change', function () { S.reviewAt = at.value || '21:30'; save(); });
       b.querySelector('#nTest').addEventListener('click', function () {
+        var bridge = nativeBridge();
+        if (bridge) {
+          /* Вопрос у человека ровно один: дойдёт ли уведомление при
+             закрытом приложении. Всплывашка на это не отвечает, поэтому
+             просим систему прислать настоящее через пять секунд. */
+          try { bridge.postMessage({ kind: 'testNotif' }); } catch (e) {}
+          toast('Сверни приложение — уведомление придёт через 5 секунд.');
+          return;
+        }
         var n = new Date();
         push('Проверка', 'Так выглядит напоминание. Сейчас ' + toHm(n.getHours() * 60 + n.getMinutes()) + '.', 'test');
       });
@@ -1574,6 +1602,14 @@
      о тебе. Каждое событие стреляет один раз за день — отметка об этом
      лежит на диске, чтобы перезагрузка не повторяла одно и то же.     */
   function push(title, body, tag) {
+    /* В нативной сборке напоминания заводит система, по плану, который
+       мы ей отдали, — и приходят они даже когда приложение закрыто.
+       Своё уведомление здесь добавило бы второе о том же, причём
+       только в тот момент, когда человек и так смотрит в экран. */
+    if (nativeBridge()) {
+      if (!document.hidden) toast(title + ' — ' + body);
+      return false;
+    }
     try {
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, { body: body, tag: tag });
@@ -1759,7 +1795,41 @@
     };
   }
 
-  var natTimer = null, natLast = '';
+  /* План напоминаний на несколько дней вперёд.
+
+     Снимок дня для виджета — это «что сейчас», и его мало: системные
+     будильники нужно завести заранее, иначе завтрашние напоминания не
+     случатся, пока приложение не откроют. Три дня — это полсотни
+     будильников при потолке системы в 64, и запас на выходные, когда
+     приложение можно не открыть ни разу.
+
+     Отмеченные дела не шлём вовсе: напоминать о закрытии того, что уже
+     закрыто, — худший вид уведомления. */
+  function nativePlan() {
+    var days = [], base = new Date();
+    for (var i = 0; i < 3; i++) {
+      var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      var dk = dateKey(d), m = marks(dk);
+      days.push({
+        dateKey: dk,
+        blocks: buildDay(d).filter(function (b) { return !b.free; }).map(function (b) {
+          return {
+            id: b.id,
+            title: b.name,
+            icon: b.icon || '',
+            from: b.from,
+            to: b.to,
+            kind: b.kind || '',
+            checkable: isCheckable(b),
+            done: m.indexOf(b.id) >= 0
+          };
+        })
+      });
+    }
+    return { reviewAt: toMin(S.reviewAt), notif: S.notif, days: days };
+  }
+
+  var natTimer = null, natLast = '', planLast = '';
   function nativeSoon(now) {
     if (!nativeBridge()) return;
     clearTimeout(natTimer);
@@ -1769,9 +1839,20 @@
     var bridge = nativeBridge();
     if (!bridge) return;
     var day = nativeDay(), body = JSON.stringify(day);
-    if (body === natLast) return;
-    natLast = body;
-    try { bridge.postMessage({ kind: 'day', day: day }); } catch (e) {}
+    if (body !== natLast) {
+      natLast = body;
+      try { bridge.postMessage({ kind: 'day', day: day }); } catch (e) {}
+    }
+
+    /* План шлём отдельно и со своим сравнением: снимок меняется каждую
+       минуту (в нём статусы), а план — только когда переставили режим,
+       отметили дело или тронули переключатели. Перезаводить полсотни
+       будильников раз в минуту незачем. */
+    var plan = nativePlan(), planBody = JSON.stringify(plan);
+    if (planBody !== planLast) {
+      planLast = planBody;
+      try { bridge.postMessage({ kind: 'plan', plan: plan }); } catch (e) {}
+    }
   }
 
   /* Отметки из виджета. Виджет ничего не решает сам — он только
