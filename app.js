@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.1.0';
+  var VERSION = '1.2.0';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -175,60 +175,34 @@
      добавляются по одной, и отсутствие половины файлов не должно
      ломать экран. */
 
+  /* Сцена занятия.
+
+     Разметка лежит в anim/scenes.js, движение — в anim/scenes.css; оба
+     файла собирает tools/scenes/build.py из общего шаблона питомца.
+     Вектор вместо Lottie: сцена появляется мгновенно, без запроса по
+     сети, и это минус библиотека на 168 КБ.
+
+     Сцены idle у слоя нет нарочно: когда дела нет, на виду остаётся
+     живой питомец самого приложения со своим настроением. */
   var Anim = {
     current: '',
-    player: null,
-    /* Что вообще есть, читаем из anim/index.json — его собирает сборка
-       по содержимому папки. Без списка приложение дёргало бы каждый
-       файл наугад и ловило 404 на каждой сцене без анимации. */
-    have: null,
-    asked: false,
 
     stop: function () {
-      if (this.player) {
-        try { this.player.destroy(); } catch (e) {}
-        this.player = null;
-      }
       el.scene.innerHTML = '';
       el.pet.dataset.anim2 = 'off';
     },
 
-    /* Список спрашиваем один раз за запуск. */
-    list: function () {
-      var self = this;
-      if (this.asked) return Promise.resolve(this.have);
-      this.asked = true;
-      return fetch('./anim/index.json')
-        .then(function (r) { return r.ok ? r.json() : []; })
-        .then(function (names) { self.have = Array.isArray(names) ? names : []; return self.have; })
-        .catch(function () { self.have = []; return self.have; });
-    },
-
     show: function (name) {
+      /* Без этой проверки перерисовка раз в минуту начинала бы все
+         анимации заново, и питомец дёргался бы на каждом тике. */
+      if (name === this.current) return;
       this.current = name;
       this.stop();
       if (!name || name === 'idle') return;
-      if (typeof window.lottie === 'undefined') return;
-
-      var self = this;
-      this.list().then(function (have) {
-        if (have.indexOf(name) < 0 || self.current !== name) return;
-        return fetch('./anim/' + name + '.json')
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (data) {
-            /* Пока файл летел, дело могло смениться — тогда эта
-               анимация уже не про то, чем человек занят. */
-            if (!data || self.current !== name) return;
-            self.player = window.lottie.loadAnimation({
-              container: el.scene,
-              renderer: 'svg',
-              loop: true,
-              autoplay: true,
-              animationData: data
-            });
-            el.pet.dataset.anim2 = 'on';
-          });
-      }).catch(function () {});
+      var all = window.KAMRON_SCENES;
+      if (!all || !all[name]) return;
+      el.scene.innerHTML = all[name];
+      el.pet.dataset.anim2 = 'on';
     }
   };
 

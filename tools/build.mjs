@@ -7,7 +7,7 @@
  * иначе забывается руками: проставляет версию в имя кэша service worker
  * и в подпись в настройках.
  */
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -26,20 +26,21 @@ const sw = stamp('sw.js', /const CACHE = '[^']*'/, `const CACHE = 'kamron-app-v$
 const app = stamp('app.js', /var VERSION = '[^']*'/, `var VERSION = '${pkg.version}'`);
 
 /**
- * Список доступных анимаций.
+ * Сколько сцен лежит в сборке.
  *
- * Без него приложение дёргало бы каждый файл наугад и ловило 404 на
- * каждой сцене, для которой анимацию ещё не положили. Список собирается
- * из папки, поэтому добавить анимацию — это положить файл и собрать.
+ * Сами сцены собирает tools/scenes/build.py из общего шаблона питомца;
+ * здесь только сверяем, что файл на месте и не пуст, — пустой scenes.js
+ * выглядел бы как «анимации просто не включились».
  */
-const animDir = join(root, 'anim');
-const anims = readdirSync(animDir)
-  .filter(name => name.endsWith('.json') && name !== 'index.json')
-  .map(name => name.replace(/\.json$/, ''))
-  .sort();
-writeFileSync(join(animDir, 'index.json'), JSON.stringify(anims) + '\n');
+const scenesFile = join(root, 'anim', 'scenes.js');
+const sceneNames = Object.keys(
+  JSON.parse((readFileSync(scenesFile, 'utf8').match(/window\.KAMRON_SCENES = (\{[\s\S]*\});/) || [, '{}'])[1])
+);
+if (!sceneNames.length) {
+  throw new Error('anim/scenes.js пуст — соберите сцены: python3 tools/scenes/build.py');
+}
 
 console.log(
   `Версия ${pkg.version}: sw.js ${sw ? 'обновлён' : 'уже актуален'}, app.js ${app ? 'обновлён' : 'уже актуален'}.\n` +
-    `Анимаций в anim/: ${anims.length}${anims.length ? ' — ' + anims.join(', ') : ''}.`
+    `Сцен в anim/scenes.js: ${sceneNames.length}.`
 );

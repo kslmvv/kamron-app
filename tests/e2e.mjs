@@ -8,6 +8,7 @@
  *
  * Запуск: npm test (нужен браузер: npx playwright install chromium)
  */
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 const { chromium } = await import('playwright').catch(() => import('playwright-core'));
@@ -437,69 +438,38 @@ const scene = await page.evaluate(() => ({
   hidden: document.getElementById('pet').dataset.anim2
 }));
 ok('у питомца есть сцена', typeof scene.now === 'string' && scene.now.length > 0);
-ok('без файла анимации питомец остаётся на месте', scene.props === 0 && scene.hidden !== 'on');
 
-/* Появился файл — его показывают вместо питомца. Подкладываем
-   настоящую анимацию Lottie, самую маленькую из возможных. */
-const animCtx = await browser.newContext({
-  viewport: { width: 393, height: 852 },
-  timezoneId: 'Asia/Tashkent'
+/* Сцена вшита в сборку, поэтому показываться должна сразу — без
+   запроса по сети и без ожидания. */
+ok('сцена показана вместо питомца', scene.hidden === 'on' && scene.props > 0);
+ok(
+  'сцена нарисована вектором',
+  (await page.evaluate(() => document.querySelectorAll('#scene svg').length)) > 0
+);
+
+/* Главное про сцены: каждому делу есть что показать. Имена берём из
+   самого app.js — иначе новый значок молча остался бы без сцены. */
+const appSrc = readFileSync(join(root, 'app.js'), 'utf8');
+const wanted = new Set();
+for (const block of ['SCENE_BY_ICON', 'SCENE_BY_KIND']) {
+  const body = appSrc.slice(appSrc.indexOf('var ' + block));
+  for (const m of body.slice(0, body.indexOf('};')).matchAll(/'([a-z]+)'(?=[,\n\s}])/g)) {
+    wanted.add(m[1]);
+  }
+}
+const haveScenes = await page.evaluate(() => Object.keys(window.KAMRON_SCENES || {}));
+const noScene = [...wanted].filter(n => n !== 'idle' && !haveScenes.includes(n));
+ok('у каждого дела есть сцена: ' + wanted.size + ' имён', noScene.length === 0, noScene.join(', '));
+
+/* Перерисовка идёт раз в минуту. Если на ней пересобирать сцену,
+   анимации начинаются заново и питомец дёргается на каждом тике. */
+const steady = await page.evaluate(() => {
+  const host = document.getElementById('scene');
+  const before = host.firstElementChild;
+  window.dispatchEvent(new Event('focus'));
+  return before === host.firstElementChild;
 });
-await animCtx.addInitScript(freeze('2026-10-15T13:00:00Z'));
-// Один обработчик на всё: Playwright примеряет маршруты в обратном
-// порядке, и два отдельных правила легко перекрывают друг друга.
-const tinyLottie = {
-  v: '5.7.4',
-  fr: 24,
-  ip: 0,
-  op: 24,
-  w: 100,
-  h: 100,
-  nm: 't',
-  ddd: 0,
-  assets: [],
-  layers: [
-    {
-      ddd: 0,
-      ind: 1,
-      ty: 1,
-      nm: 'bg',
-      sr: 1,
-      ks: {
-        o: { a: 0, k: 100 },
-        r: { a: 0, k: 0 },
-        p: { a: 0, k: [50, 50, 0] },
-        a: { a: 0, k: [50, 50, 0] },
-        s: { a: 0, k: [100, 100, 100] }
-      },
-      ao: 0,
-      sw: 100,
-      sh: 100,
-      sc: '#d6f24b',
-      ip: 0,
-      op: 24,
-      st: 0,
-      bm: 0
-    }
-  ]
-};
-await animCtx.route('**/anim/*.json', route => {
-  const isIndex = new URL(route.request().url()).pathname.endsWith('/index.json');
-  route.fulfill({
-    contentType: 'application/json',
-    body: JSON.stringify(isIndex ? ['work', 'read', 'walk', 'sleep', 'eat'] : tinyLottie)
-  });
-});
-const animPage = await animCtx.newPage();
-await animPage.goto(base, { waitUntil: 'networkidle' });
-await animPage.waitForTimeout(1200);
-const anim = await animPage.evaluate(() => ({
-  on: document.getElementById('pet').dataset.anim2,
-  svg: document.querySelectorAll('#scene svg').length
-}));
-ok('анимация занятия показана вместо питомца', anim.on === 'on');
-ok('проигрыватель нарисовал кадр', anim.svg > 0);
-await animCtx.close();
+ok('перерисовка не перезапускает сцену', steady);
 
 /* После отбоя он спит, даже если в плане что-то стоит. */
 const lateCtx = await browser.newContext({

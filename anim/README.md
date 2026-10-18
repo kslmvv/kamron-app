@@ -1,64 +1,36 @@
-# Анимации питомца
+# Сцены питомца
 
-Сюда кладутся файлы Lottie — те самые, что рисуют аниматоры. Приложение
-подхватывает их по имени: имя файла совпадает с названием сцены.
+В папке два собранных файла — больше тут ничего править руками не нужно:
 
-## Как добавить
+| Файл | Что внутри |
+| --- | --- |
+| `scenes.js` | `window.KAMRON_SCENES` — разметка каждой сцены, готовая вставка в `.scene` |
+| `scenes.css` | ключевые кадры и правила, запертые внутри `.scene` |
 
-1. Найти анимацию на lottiefiles.com. В фильтрах выбрать **Free** —
-   платные скачиваются с водяным знаком, и использовать их нельзя.
-2. Скачать как **Lottie JSON** (не GIF и не MP4).
-3. Положить сюда под нужным именем из таблицы ниже, например
-   `work.json`.
-4. Закоммитить и запушить. Приложение подхватит файл само.
+Оба собирает `python3 tools/scenes/build.py` из исходников в `tools/scenes/`:
 
-Файла нет — сцена просто не показывается, питомец остаётся обычным.
-Ломаться ничего не будет, так что добавлять можно по одной.
+| Файл | Что внутри |
+| --- | --- |
+| `pet.py` | питомец и базовые движения — один шаблон на все сцены |
+| `scenes_a.py`, `scenes_b.py`, `scenes_c.py` | описания сцен: реквизит, поза, кадры |
+| `scenes.py` | сборка словаря и порядок сцен |
 
-## Имена файлов
+## Почему вектор, а не Lottie
 
-| Файл | Когда показывается | Что искать на LottieFiles |
-| --- | --- | --- |
-| `work.json` | работа | working on laptop, coding |
-| `read.json` | пара, университет | reading book, studying |
-| `write.json` | письмо, эссе, конспект | writing, taking notes |
-| `present.json` | доклад, презентация | presentation, chart |
-| `shower.json` | душ | shower, bath |
-| `eat.json` | завтрак, обед, ужин | eating, meal |
-| `drink.json` | кофе, чай, вода | coffee, drinking |
-| `travel.json` | дорога | bus, commute, driving |
-| `flight.json` | рейс, аэропорт | airplane, travel |
-| `sport.json` | зал, тренировка | workout, gym, dumbbell |
-| `ball.json` | футбол, матч | football, soccer |
-| `screen.json` | кино, сериал | watching tv, movie |
-| `game.json` | игры, приставка | gaming, gamepad |
-| `music.json` | музыка, наушники | listening music |
-| `sleep.json` | ночь, сон | sleeping |
-| `wake.json` | подъём | wake up, morning, alarm |
-| `call.json` | звонок | phone call |
-| `meeting.json` | встреча, собрание | meeting, handshake |
-| `shop.json` | магазин, покупки | shopping, grocery |
-| `gift.json` | подарок | gift box |
-| `money.json` | оплата, счета | payment, money |
-| `health.json` | врач, аптека | doctor, health |
-| `family.json` | семья | family |
-| `laundry.json` | стирка | laundry, washing machine |
-| `repair.json` | ремонт, починить | repair, tools |
-| `haircut.json` | стрижка | haircut, barber |
-| `clean.json` | уборка | cleaning, broom |
-| `walk.json` | прогулка, свободное время | walking, park |
-| `pray.json` | намаз | praying |
-| `photo.json` | фото | camera, photography |
-| `idle.json` | ничего не идёт | idle, waiting, breathing |
+Сцена вставляется мгновенно, без запроса по сети и без 404 на каждое
+дело, для которого файла ещё нет. Весит она килобайты, а проигрыватель
+Lottie весил 168 КБ сам по себе. И на экране айфона вектор не мылится.
 
-## Про вес
+## Как добавить сцену
 
-Каждый файл лучше держать до 150 КБ: они загружаются на телефоне и
-лежат в офлайн-кэше. Анимации с растровыми картинками внутри бывают по
-несколько мегабайт — такие не берём, нужны векторные.
+1. Описать её в одном из `tools/scenes/scenes_*.py`: `title`, `css`, `svg`.
+2. Вписать имя в `ORDER` в `tools/scenes/scenes.py`.
+3. Связать значок дела с именем сцены в `SCENE_BY_ICON` в `app.js`.
+4. Собрать: `python3 tools/scenes/build.py`, затем `npm run build`.
 
-## Про лицензию
+## Правило, на котором я уже обжёгся
 
-У бесплатных анимаций на LottieFiles лицензия разрешает использование,
-но у каждой свои условия — у части требуется указать автора. Имена
-авторов удобно сложить в `anim/AUTHORS.md`, чтобы потом не искать.
+Позиция детали живёт в родительском `<g transform="translate(...)">`, а
+CSS-анимация — на вложенном узле с `transform-origin: 0 0`. Если повесить
+анимацию прямо на элемент с атрибутом `transform`, CSS затрёт атрибут и
+деталь улетит в угол кадра.
