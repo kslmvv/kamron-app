@@ -29,6 +29,7 @@ targets:
       - path: KamronAPP
         excludes:
           - Info.plist
+          - AppSecrets.example.swift
       - path: Shared
         excludes:
           - Secrets.example.swift

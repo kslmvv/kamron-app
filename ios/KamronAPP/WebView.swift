@@ -20,6 +20,11 @@ final class WebViewModel: ObservableObject {
         bridge?.flushMarks()
     }
 
+    /// Ключ от сервера — странице, чтобы она вернула данные из копии.
+    func handOverKey() {
+        bridge?.handOverKey()
+    }
+
     func reload() {
         failed = false
         guard let webView else { return }
@@ -121,8 +126,9 @@ struct WebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             model.failed = false
-            // Страница загрузилась — самое время отдать ей отметки,
-            // накопившиеся в виджете, пока приложение было закрыто.
+            // Страница загрузилась: отдаём ей ключ (на случай первого
+            // запуска) и отметки, накопившиеся в виджете.
+            model.handOverKey()
             model.wokeUp()
         }
 

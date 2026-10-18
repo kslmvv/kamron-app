@@ -47,6 +47,28 @@ final class Bridge: NSObject, WKScriptMessageHandler {
         flushMarks()
     }
 
+    // MARK: - Передача ключа странице
+
+    /// При первом запуске хранилище у приложения своё и пустое: данные,
+    /// накопленные в Safari, сюда не переезжают. Поэтому отдаём странице
+    /// ключ, и она возвращает всё из последней копии сама. Повторный
+    /// вызов безвреден — страница с уже настроенной связью его не примет.
+    func handOverKey() {
+        guard !AppSecrets.server.isEmpty, !AppSecrets.token.isEmpty, let webView else { return }
+        let url = escaped(AppSecrets.server)
+        let token = escaped(AppSecrets.token)
+        webView.evaluateJavaScript("window.kamronLink && window.kamronLink('\(url)', '\(token)')")
+    }
+
+    /// Значения уходят в строку JavaScript, поэтому кавычки и обратные
+    /// косые экранируем: иначе ключ с апострофом сломает весь вызов.
+    private func escaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\n", with: "")
+    }
+
     // MARK: - Отметки из виджета
 
     /// Отдаём странице то, что человек нажал в виджете, пока приложение

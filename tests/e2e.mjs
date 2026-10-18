@@ -525,6 +525,67 @@ await page.goto('about:blank');
 await page.waitForTimeout(300);
 fake.close();
 
+part('Первый запуск в сборке из Xcode');
+
+/* У сборки своё хранилище: оно пустое, и данные из Safari туда не
+   переезжают. Оболочка передаёт ключ, страница возвращает копию сама. */
+const shellSaved = {
+  tasks: [{ id: 't9', title: 'Забрать посылку', date: '2026-10-15', time: '', done: false }],
+  notes: [{ id: 'n9', ts: 1, body: 'Копия из облака' }],
+  done: {},
+  habits: []
+};
+const shellServer = createServer((req, res) => {
+  const cors = {
+    'access-control-allow-origin': '*',
+    'access-control-allow-headers': 'content-type, authorization',
+    'content-type': 'application/json'
+  };
+  if (req.method === 'OPTIONS') return res.writeHead(204, cors).end();
+  let body = '';
+  req.on('data', c => (body += c));
+  req.on('end', () => {
+    if (req.url === '/api/backup' && req.method === 'GET')
+      return res
+        .writeHead(200, cors)
+        .end(JSON.stringify({ savedAt: '2026-10-15T10:00:00.000Z', state: shellSaved }));
+    if (req.url === '/api/changes') return res.writeHead(200, cors).end('{"изменения":[]}');
+    res.writeHead(200, cors).end('{"ok":true}');
+  });
+});
+await new Promise(resolve => shellServer.listen(8196, '127.0.0.1', resolve));
+
+const shellCtx = await browser.newContext({
+  locale: 'ru-RU',
+  timezoneId: 'Asia/Tashkent',
+  viewport: { width: 390, height: 844 }
+});
+await shellCtx.addInitScript(freeze('2026-10-15T13:00:00Z'));
+const shell = await shellCtx.newPage();
+await shell.goto(base, { waitUntil: 'networkidle' });
+
+const restored = await shell.evaluate(async () => {
+  const first = window.kamronLink('http://127.0.0.1:8196', 'test');
+  await new Promise(r => setTimeout(r, 900));
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  // Повторный вызов на уже настроенной связи ничего не делает.
+  const second = window.kamronLink('http://example.invalid', 'другой');
+  const after = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  return {
+    first,
+    second,
+    tasks: (s.tasks || []).length,
+    notes: (s.notes || []).length,
+    url: after.link && after.link.url
+  };
+});
+ok('оболочка передала ключ странице', restored.first === true);
+ok('данные вернулись из копии сами', restored.tasks === 1 && restored.notes === 1);
+ok('повторная передача ключа игнорируется', restored.second === false);
+ok('чужой адрес не перезаписал связь', restored.url === 'http://127.0.0.1:8196');
+await shell.close();
+shellServer.close();
+
 part('Резервная копия');
 // Сервер копий подделываем тем же сервером связи.
 let saved = null;

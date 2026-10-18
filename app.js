@@ -1654,6 +1654,23 @@
     return true;
   }
 
+  /* Первый запуск в сборке из Xcode: у приложения своё хранилище, и оно
+     пустое. Оболочка передаёт сюда ключ, и страница молча возвращает всё
+     из последней копии — иначе человеку пришлось бы вбивать адрес и ключ
+     руками в настройках, а это ровно тот шаг, на котором бросают. */
+  window.kamronLink = function (url, token) {
+    if (!url || !token || linked()) return false;
+    S.link = { url: String(url), token: String(token) };
+    save();
+    restore(true).then(function (back) {
+      if (back) toast('Данные вернулись из копии.');
+      pullSoon();
+      syncSoon(true);
+      nativeSoon(true);
+    });
+    return true;
+  };
+
   window.kamronApply = function (list) {
     if (!list || !list.length) return;
     var changed = false;
