@@ -8,14 +8,83 @@ struct DayWidgetView: View {
     var body: some View {
         let state = entry.state
 
-        if state.blocked {
-            Notice(text: "Виджет не видит данных. Включите App Groups в Xcode или впишите ключ в Secrets.swift — тогда день придёт с сервера.")
-        } else if !state.fresh {
-            Notice(text: "Пока нет сегодняшнего дня. Откройте Kamron APP — виджет подтянет его за минуту.")
-        } else if family == .systemSmall {
-            SmallView(state: state, pose: entry.pose, now: entry.date)
+        switch family {
+        // На экране блокировки места нет ни на питомца, ни на объяснения:
+        // там помещается одна мысль, и это «что сейчас и сколько осталось».
+        case .accessoryRectangular:
+            LockRectangle(state: state)
+        case .accessoryCircular:
+            LockCircle(state: state)
+        case .accessoryInline:
+            LockInline(state: state)
+        default:
+            if state.blocked {
+                Notice(text: "Виджет не видит данных. Включите App Groups в Xcode или впишите ключ в Secrets.swift — тогда день придёт с сервера.")
+            } else if !state.fresh {
+                Notice(text: "Пока нет сегодняшнего дня. Откройте Kamron APP — виджет подтянет его за минуту.")
+            } else if family == .systemSmall {
+                SmallView(state: state, pose: entry.pose, now: entry.date)
+            } else {
+                MediumView(state: state, pose: entry.pose, now: entry.date)
+            }
+        }
+    }
+}
+
+// MARK: - Экран блокировки
+
+/// Прямоугольный: строка дела и живой отсчёт до его конца.
+private struct LockRectangle: View {
+    let state: DayState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if let block = state.current {
+                Label(block.title, systemImage: state.activity.symbol ?? "clock")
+                    .font(.system(size: 15, weight: .bold))
+                    .lineLimit(1)
+                Text(timerInterval: DaySnapshot.countdown(to: DaySnapshot.moment(block.to)), countsDown: true)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            } else if let soon = state.next.first {
+                Label("дальше в " + clock(soon.from), systemImage: "clock")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Text(soon.title)
+                    .font(.system(size: 15, weight: .bold))
+                    .lineLimit(1)
+            } else {
+                Label(state.fresh ? "День закрыт" : "Нет данных", systemImage: "moon.zzz.fill")
+                    .font(.system(size: 15, weight: .bold))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+/// Круглый: кольцо закрытого дня, внутри — предмет текущего занятия.
+private struct LockCircle: View {
+    let state: DayState
+
+    var body: some View {
+        Gauge(value: Double(min(max(state.pct, 0), 100)), in: 0...100) {
+            Image(systemName: state.activity.symbol ?? "circle.dashed")
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+    }
+}
+
+/// Строчный: одна строка рядом с часами, больше туда не влезает.
+private struct LockInline: View {
+    let state: DayState
+
+    var body: some View {
+        if let block = state.current {
+            Label(block.title + " до " + clock(block.to), systemImage: state.activity.symbol ?? "clock")
+        } else if let soon = state.next.first {
+            Label(clock(soon.from) + " " + soon.title, systemImage: "clock")
         } else {
-            MediumView(state: state, pose: entry.pose, now: entry.date)
+            Label("День закрыт", systemImage: "moon.zzz.fill")
         }
     }
 }
@@ -204,15 +273,20 @@ private struct Left: View {
                     .foregroundStyle(color)
                     .frame(maxWidth: big ? 108 : 74, alignment: .leading)
             } else {
+                // «5 ч 10 мин» в 24 пункта шире колонки. Без ужатия строка
+                // обрежется до «5 ч 1…» — а это уже не остаток, а мусор.
                 Text(DaySnapshot.rough(until: end))
                     .font(.system(size: big ? 24 : 15, weight: .heavy))
                     .monospacedDigit()
                     .foregroundStyle(color)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.55)
             }
             Text("осталось")
                 .font(.system(size: big ? 12 : 11, weight: .bold))
                 .foregroundStyle(color.opacity(0.7))
+                .lineLimit(1)
+                .layoutPriority(-1)
         }
     }
 }

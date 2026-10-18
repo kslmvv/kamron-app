@@ -85,21 +85,31 @@ struct DayWidget: Widget {
         }
         .configurationDisplayName("День")
         .description("Что сейчас, сколько осталось и сколько блоков мимо.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryRectangular, .accessoryCircular, .accessoryInline
+        ])
     }
 }
 
 /// Фон говорит о дне раньше текста: лайм — идёшь по плану, красный —
 /// блок упущен, тёмный — день закрыт.
 struct DayBackground: View {
+    @Environment(\.widgetFamily) private var family
     let entry: DayEntry
 
     var body: some View {
-        let state = entry.state
-        switch state.tone {
-        case .day: Palette.day
-        case .alarm: Palette.alarm
-        case .night: Palette.night
+        if family == .accessoryCircular || family == .accessoryRectangular || family == .accessoryInline {
+            // На экране блокировки подложку рисует система, поверх обоев и
+            // со своим размытием. Свой фон поверх неё становится мутным
+            // пятном, из которого не читается ни текст, ни кольцо.
+            Color.clear
+        } else {
+            switch entry.state.tone {
+            case .day: Palette.day
+            case .alarm: Palette.alarm
+            case .night: Palette.night
+            }
         }
     }
 }
@@ -121,6 +131,9 @@ struct DayState {
     var skin: Color {
         tone == .night ? Palette.lime : .white
     }
+
+    /// Сколько дня закрыто. Считает страница, виджет только показывает.
+    var pct: Int { snapshot?.pct ?? 0 }
 
     /// Чем питомец занят: по значку текущего дела, а без дела — по
     /// настроению, которое посчитала страница.
