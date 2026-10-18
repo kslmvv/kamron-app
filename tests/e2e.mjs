@@ -456,6 +456,9 @@ const fake = createServer((req, res) => {
       got.widget.push(JSON.parse(body || '{}'));
       return res.writeHead(200, cors).end('{"ok":true}');
     }
+    // Копий у этого стенда нет, но отвечать 404 нельзя: браузер пишет
+    // это в консоль как ошибку, а приложение тут ни при чём.
+    if (req.url === '/api/backup') return res.writeHead(200, cors).end('{"savedAt":null}');
     if (req.url === '/api/changes' && req.method === 'GET') {
       return res.writeHead(200, cors).end(JSON.stringify({ изменения: queue }));
     }
@@ -511,6 +514,14 @@ ok(
       document.getElementById('noteList').textContent.includes('очередь')
   )
 );
+await page.evaluate(() => {
+  // Иначе страница продолжит стучаться в закрытый сервер по таймеру,
+  // и в консоли появится ошибка сети, которой приложение не виновато.
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3'));
+  delete s.link;
+  localStorage.setItem('den-kamrona-v3', JSON.stringify(s));
+});
+await page.goto('about:blank');
 await page.waitForTimeout(300);
 fake.close();
 
@@ -542,6 +553,8 @@ const backup = createServer((req, res) => {
         .end(JSON.stringify({ копии: saved ? [{ savedAt: '2026-10-15T10:00:00.000Z', дней: 3 }] : [] }));
     }
     if (req.url === '/api/snapshot' && req.method === 'POST')
+      return res.writeHead(200, cors).end('{"ok":true}');
+    if (req.url === '/api/widget' && req.method === 'POST')
       return res.writeHead(200, cors).end('{"ok":true}');
     if (req.url === '/api/changes') return res.writeHead(200, cors).end('{"изменения":[]}');
     res.writeHead(404, cors).end('{}');
