@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kamron APP">
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#242e1d"/>
+      <stop offset="0.55" stop-color="#151a10"/>
+      <stop offset="1" stop-color="#0b0d08"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.46" r="0.52">
+      <stop offset="0" stop-color="#d6f24b" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#d6f24b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lime" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#e9fc82"/>
+      <stop offset="1" stop-color="#bfe135"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#night)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <path transform="translate(75.41 399.32) scale(0.38221 -0.38221)" fill="url(#lime)" d="M70 0V750H276V165L221 208L646 750H865L257 0ZM428 358 580 484 875 0H640Z"/>
+</svg>

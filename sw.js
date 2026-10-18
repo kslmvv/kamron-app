@@ -9,7 +9,7 @@
  * Стратегия — сеть вперёд: опубликованные изменения доходят сразу,
  * а кэш выручает только когда сети нет.
  */
-const CACHE = 'kamron-app-v1.2.3';
+const CACHE = 'kamron-app-v1.2.4';
 const PREFIX = 'kamron-app-';
 const ASSETS = [
   './',
