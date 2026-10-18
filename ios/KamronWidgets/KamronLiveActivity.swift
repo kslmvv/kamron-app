@@ -8,7 +8,7 @@ struct KamronLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: KamronActivityAttributes.self) { context in
             LockScreenCard(state: context.state, dateKey: context.attributes.dateKey)
-                .activityBackgroundTint(Color(red: 0.055, green: 0.067, blue: 0.043).opacity(0.92))
+                .activityBackgroundTint(Palette.liveBack.opacity(0.92))
                 .activitySystemActionForegroundColor(Palette.lime)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -74,35 +74,56 @@ private struct LockScreenCard: View {
     let dateKey: String
 
     var body: some View {
-        VStack(spacing: 11) {
-            HStack(alignment: .center, spacing: 13) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(state.done ? "ЗАКРЫТО" : "СЕЙЧАС")
+                        .font(.system(size: 10, weight: .heavy))
+                        .tracking(1.4)
+                        .foregroundStyle(.white.opacity(0.42))
+
+                    /* Значок занятия питомец показывает предметом, поэтому
+                       эмодзи рядом с названием — то же самое дважды. */
+                    Text(state.title)
+                        .font(.system(size: 21, weight: .heavy))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+
+                Spacer(minLength: 6)
+
                 PetScene(
                     mood: state.done ? .happy : PetMood(raw: state.mood),
                     pose: .still,
                     activity: PetActivity(icon: state.icon),
                     skin: Palette.lime,
-                    size: 50
+                    size: 42
                 )
+            }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(state.icon)
-                            .font(.system(size: 14))
-                        Text(state.title)
-                            .font(.system(size: 18, weight: .heavy))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
-                    Text(state.done
-                         ? "закрыто"
-                         : time(state.startedAt) + " — " + time(state.endsAt))
+            /* Остаток — главное число карточки: с экрана блокировки
+               смотрят ради него, а не ради названия дела. */
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if state.done {
+                    /* Отсчёт у закрытого дела показывать нечего: он бы
+                       продолжал бежать к концу окна, которое уже не важно. */
+                    Text("Готово")
+                        .font(.system(size: 26, weight: .heavy))
+                        .foregroundStyle(Palette.lime)
+                    Text(time(state.startedAt) + " — " + time(state.endsAt))
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                } else {
+                    Remaining(end: state.endsAt, big: true, tint: Palette.lime, stacked: false)
+                    Text("осталось · до " + time(state.endsAt))
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.45))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-
-                Spacer(minLength: 6)
-
-                Remaining(end: state.endsAt, big: false, tint: Palette.lime)
+                Spacer(minLength: 0)
             }
 
             Bar(from: state.startedAt, to: state.endsAt)
@@ -122,25 +143,37 @@ private struct Remaining: View {
     let end: Date
     var big: Bool
     var tint: Color
+    /// Со своей подписью «осталось» снизу — так нужно в Динамическом
+    /// острове, где рядом места нет. На карточке подпись стоит сбоку, и
+    /// вторая была бы повтором.
+    var stacked: Bool = true
+
+    private var size: CGFloat { big ? (stacked ? 22 : 30) : 19 }
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 2) {
             if DaySnapshot.ticking(until: end) {
                 Text(timerInterval: DaySnapshot.countdown(to: end), countsDown: true)
-                    .font(.system(size: big ? 22 : 19, weight: .heavy))
+                    .font(.system(size: size, weight: .heavy))
                     .monospacedDigit()
                     .foregroundStyle(tint)
-                    .frame(maxWidth: big ? 86 : 78, alignment: .trailing)
+                    /* Ширину запираем только в стопке: бегущие цифры разной
+                       ширины иначе дёргают соседей. В строке карточки текст
+                       стоит справа от числа, и фиксированная рамка оставила
+                       бы между ними дыру. */
+                    .frame(maxWidth: stacked ? (big ? 86 : 78) : nil, alignment: .trailing)
             } else {
                 Text(DaySnapshot.rough(until: end))
-                    .font(.system(size: big ? 20 : 17, weight: .heavy))
+                    .font(.system(size: big ? (stacked ? 20 : 30) : 17, weight: .heavy))
                     .monospacedDigit()
                     .foregroundStyle(tint)
                     .lineLimit(1)
             }
-            Text("осталось")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white.opacity(0.45))
+            if stacked {
+                Text("осталось")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
         }
     }
 }
