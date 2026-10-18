@@ -7,7 +7,7 @@
  * иначе забывается руками: проставляет версию в имя кэша service worker
  * и в подпись в настройках.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -25,6 +25,21 @@ function stamp(file, pattern, replacement) {
 const sw = stamp('sw.js', /const CACHE = '[^']*'/, `const CACHE = 'kamron-app-v${pkg.version}'`);
 const app = stamp('app.js', /var VERSION = '[^']*'/, `var VERSION = '${pkg.version}'`);
 
+/**
+ * Список доступных анимаций.
+ *
+ * Без него приложение дёргало бы каждый файл наугад и ловило 404 на
+ * каждой сцене, для которой анимацию ещё не положили. Список собирается
+ * из папки, поэтому добавить анимацию — это положить файл и собрать.
+ */
+const animDir = join(root, 'anim');
+const anims = readdirSync(animDir)
+  .filter(name => name.endsWith('.json') && name !== 'index.json')
+  .map(name => name.replace(/\.json$/, ''))
+  .sort();
+writeFileSync(join(animDir, 'index.json'), JSON.stringify(anims) + '\n');
+
 console.log(
-  `Версия ${pkg.version}: sw.js ${sw ? 'обновлён' : 'уже актуален'}, app.js ${app ? 'обновлён' : 'уже актуален'}.`
+  `Версия ${pkg.version}: sw.js ${sw ? 'обновлён' : 'уже актуален'}, app.js ${app ? 'обновлён' : 'уже актуален'}.\n` +
+    `Анимаций в anim/: ${anims.length}${anims.length ? ' — ' + anims.join(', ') : ''}.`
 );

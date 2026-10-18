@@ -16,6 +16,7 @@ const ASSETS = [
   './index.html',
   './styles.css',
   './app.js',
+  './vendor/lottie.min.js',
   './manifest.webmanifest',
   './icons/favicon.svg',
   './icons/apple-touch-icon.png',

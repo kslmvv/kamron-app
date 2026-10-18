@@ -166,178 +166,70 @@
     return (task && task.icon) || guessIcon(task && task.title);
   }
 
-  /* ── Сцены занятий ────────────────────────────────────────────────
-     Питомец не просто меняет лицо: он занят тем же, чем и ты. Сцена
-     выбирается по значку дела, поэтому работает и для тех задач,
-     которые ты придумаешь завтра, — значок им подбирается сам.
+  /* ── Анимации занятий ─────────────────────────────────────────────
+     Файлы Lottie лежат в anim/ и называются по имени сцены. Нарисованы
+     аниматорами, а не кодом: рисовать живого персонажа фигурами у меня
+     выходило хуже, чем честно взять готовую анимацию.
 
-     Реквизит рисуется фигурами, а не картинками: так он тянется под
-     любой экран и не грузит ни байта по сети. */
+     Файла нет — ничего не показываем. Это важнее, чем кажется: сцены
+     добавляются по одной, и отсутствие половины файлов не должно
+     ломать экран. */
 
-  var SCENES = {
-    read:
-      '<svg class="pr book" viewBox="0 0 120 70"><path class="bk-p" d="M8 16 Q34 6 58 18 V60 Q34 48 8 58 Z"></path>' +
-      '<path class="bk-p" d="M112 16 Q86 6 62 18 V60 Q86 48 112 58 Z"></path>' +
-      '<path class="bk-f" d="M60 17 Q86 7 111 17 V57 Q86 47 60 57 Z"></path></svg>',
+  var Anim = {
+    current: '',
+    player: null,
+    /* Что вообще есть, читаем из anim/index.json — его собирает сборка
+       по содержимому папки. Без списка приложение дёргало бы каждый
+       файл наугад и ловило 404 на каждой сцене без анимации. */
+    have: null,
+    asked: false,
 
-    work:
-      '<svg class="pr lap" viewBox="0 0 120 74"><rect class="lp-s" x="16" y="4" width="88" height="50" rx="7"></rect>' +
-      '<rect class="lp-g" x="21" y="9" width="78" height="40" rx="4"></rect>' +
-      '<g class="lp-c"><rect x="28" y="16" width="30" height="4" rx="2"></rect>' +
-      '<rect x="28" y="26" width="48" height="4" rx="2"></rect>' +
-      '<rect x="28" y="36" width="20" height="4" rx="2"></rect></g>' +
-      '<path class="lp-b" d="M6 56 H114 L106 70 H14 Z"></path></svg>',
+    stop: function () {
+      if (this.player) {
+        try { this.player.destroy(); } catch (e) {}
+        this.player = null;
+      }
+      el.scene.innerHTML = '';
+      el.pet.dataset.anim2 = 'off';
+    },
 
-    shower:
-      '<svg class="pr shw" viewBox="0 0 120 44"><path class="sh-h" d="M42 4 H78 A9 9 0 0 1 87 13 V18 H33 V13 A9 9 0 0 1 42 4 Z"></path></svg>' +
-      '<i class="drp p1"></i><i class="drp p2"></i><i class="drp p3"></i><i class="drp p4"></i>' +
-      '<i class="bub u1"></i><i class="bub u2"></i><i class="bub u3"></i>',
+    /* Список спрашиваем один раз за запуск. */
+    list: function () {
+      var self = this;
+      if (this.asked) return Promise.resolve(this.have);
+      this.asked = true;
+      return fetch('./anim/index.json')
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (names) { self.have = Array.isArray(names) ? names : []; return self.have; })
+        .catch(function () { self.have = []; return self.have; });
+    },
 
-    eat:
-      '<svg class="pr bowl" viewBox="0 0 120 56"><path class="bw" d="M20 14 H100 A40 40 0 0 1 60 52 A40 40 0 0 1 20 14 Z"></path></svg>' +
-      '<svg class="pr spoon" viewBox="0 0 40 60"><rect class="sp-s" x="17" y="14" width="5" height="42" rx="2.5"></rect>' +
-      '<ellipse class="sp-h" cx="19.5" cy="12" rx="9" ry="12"></ellipse></svg>' +
-      '<i class="stm m1"></i><i class="stm m2"></i>',
+    show: function (name) {
+      this.current = name;
+      this.stop();
+      if (!name || name === 'idle') return;
+      if (typeof window.lottie === 'undefined') return;
 
-    travel:
-      '<i class="spd v1"></i><i class="spd v2"></i><i class="spd v3"></i>' +
-      '<svg class="pr road" viewBox="0 0 200 8"><rect class="rd" x="0" y="2" width="200" height="4" rx="2"></rect></svg>',
-
-    sport:
-      '<svg class="pr dumb" viewBox="0 0 130 40"><rect class="db-b" x="30" y="16" width="70" height="8" rx="4"></rect>' +
-      '<rect class="db-w" x="10" y="4" width="18" height="32" rx="7"></rect>' +
-      '<rect class="db-w" x="102" y="4" width="18" height="32" rx="7"></rect></svg>',
-
-    screen:
-      '<svg class="pr tv" viewBox="0 0 120 80"><rect class="tv-f" x="4" y="4" width="112" height="64" rx="9"></rect>' +
-      '<rect class="tv-s" x="11" y="11" width="98" height="50" rx="5"></rect>' +
-      '<rect class="tv-g" x="11" y="11" width="98" height="50" rx="5"></rect>' +
-      '<path class="tv-l" d="M44 72 H76"></path></svg>',
-
-    music:
-      '<i class="not t1">♪</i><i class="not t2">♫</i><i class="not t3">♪</i>',
-
-    sleep:
-      '<svg class="pr quilt" viewBox="0 0 170 60"><path class="qt" d="M6 28 Q85 2 164 28 V56 H6 Z"></path>' +
-      '<path class="qt-l" d="M6 40 Q85 16 164 40"></path></svg>' +
-      '<i class="zed g1">z</i><i class="zed g2">z</i><i class="zed g3">z</i>',
-
-    wake:
-      '<svg class="pr sun" viewBox="0 0 170 100"><g class="sn-r"><rect x="83" y="2" width="4" height="13" rx="2"></rect>' +
-      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(45 85 50)"></rect>' +
-      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(-45 85 50)"></rect>' +
-      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(90 85 50)"></rect>' +
-      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(-90 85 50)"></rect></g>' +
-      '<circle class="sn" cx="85" cy="64" r="30"></circle></svg>',
-
-    call:
-      '<svg class="pr phone" viewBox="0 0 44 64"><rect class="ph" x="6" y="4" width="32" height="56" rx="8"></rect>' +
-      '<rect class="ph-s" x="11" y="11" width="22" height="40" rx="3"></rect></svg>' +
-      '<i class="wav k1"></i><i class="wav k2"></i>',
-
-    shop:
-      '<svg class="pr bag" viewBox="0 0 60 72"><path class="bg-h" d="M19 24 V17 A11 11 0 0 1 41 17 V24"></path>' +
-      '<rect class="bg-b" x="8" y="24" width="44" height="42" rx="7"></rect></svg>',
-
-    clean:
-      '<svg class="pr broom" viewBox="0 0 70 96"><rect class="br-s" x="31" y="2" width="6" height="56" rx="3"></rect>' +
-      '<path class="br-h" d="M20 58 H50 L57 90 H13 Z"></path></svg>' +
-      '<i class="dst w1"></i><i class="dst w2"></i>',
-
-    walk:
-      '<svg class="pr grass" viewBox="0 0 220 26"><path class="gr" d="M8 26 Q12 8 16 26 M26 26 Q31 6 36 26 M48 26 Q52 10 56 26' +
-      ' M70 26 Q75 5 80 26 M94 26 Q98 9 102 26 M118 26 Q123 7 128 26 M142 26 Q146 10 150 26' +
-      ' M166 26 Q171 6 176 26 M192 26 Q196 9 200 26"></path></svg>',
-
-    write:
-      '<svg class="pr sheet" viewBox="0 0 100 76"><rect class="sh-p" x="6" y="4" width="88" height="68" rx="6"></rect>' +
-      '<g class="sh-t"><rect x="16" y="18" width="46" height="4" rx="2"></rect>' +
-      '<rect x="16" y="32" width="62" height="4" rx="2"></rect>' +
-      '<rect x="16" y="46" width="36" height="4" rx="2"></rect></g></svg>' +
-      '<svg class="pr pencil" viewBox="0 0 20 70"><rect class="pc-b" x="6" y="0" width="8" height="54" rx="3"></rect>' +
-      '<path class="pc-t" d="M6 54 H14 L10 68 Z"></path></svg>',
-
-    present:
-      '<svg class="pr chart" viewBox="0 0 110 70"><rect class="ch-f" x="2" y="2" width="106" height="60" rx="7"></rect>' +
-      '<g class="ch-b"><rect x="18" y="20" width="14" height="32" rx="3"></rect>' +
-      '<rect x="42" y="20" width="14" height="32" rx="3"></rect>' +
-      '<rect x="66" y="20" width="14" height="32" rx="3"></rect></g>' +
-      '<rect class="ch-l" x="12" y="52" width="86" height="3" rx="1.5"></rect></svg>',
-
-    health:
-      '<svg class="pr pulse" viewBox="0 0 120 44"><path class="pl-t" d="M2 22 H34 L42 6 L52 38 L62 22 H118"></path></svg>' +
-      '<i class="hrt"></i>',
-
-    money:
-      '<i class="coin c1"></i><i class="coin c2"></i><i class="coin c3"></i>' +
-      '<svg class="pr purse" viewBox="0 0 70 50"><rect class="pu" x="4" y="10" width="62" height="36" rx="8"></rect>' +
-      '<path class="pu-c" d="M44 28 H58"></path></svg>',
-
-    gift:
-      '<svg class="pr box" viewBox="0 0 70 64"><rect class="bx-b" x="6" y="22" width="58" height="38" rx="6"></rect>' +
-      '<rect class="bx-l" x="2" y="14" width="66" height="14" rx="5"></rect>' +
-      '<rect class="bx-r" x="31" y="14" width="8" height="46"></rect>' +
-      '<path class="bx-k" d="M35 14 C26 2 14 6 20 14 M35 14 C44 2 56 6 50 14"></path></svg>',
-
-    family:
-      '<svg class="pr kin k-a" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="11" transform="rotate(45 20 20)"></rect></svg>' +
-      '<svg class="pr kin k-b" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="11" transform="rotate(45 20 20)"></rect></svg>',
-
-    laundry:
-      '<svg class="pr wash" viewBox="0 0 90 90"><rect class="wa-f" x="4" y="4" width="82" height="82" rx="12"></rect>' +
-      '<circle class="wa-d" cx="45" cy="50" r="27"></circle>' +
-      '<g class="wa-s"><circle cx="45" cy="34" r="6"></circle><circle cx="59" cy="56" r="5"></circle>' +
-      '<circle cx="32" cy="58" r="4.5"></circle></g>' +
-      '<circle class="wa-k" cx="72" cy="16" r="4"></circle></svg>',
-
-    repair:
-      '<svg class="pr wrench" viewBox="0 0 40 80"><rect class="wr-s" x="15" y="18" width="10" height="58" rx="4"></rect>' +
-      '<path class="wr-h" d="M20 2 A14 14 0 1 0 20 30 A9 9 0 1 1 20 2 Z"></path></svg>' +
-      '<i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i>',
-
-    haircut:
-      '<svg class="pr scis" viewBox="0 0 70 60"><g class="sc-a"><rect x="30" y="4" width="6" height="34" rx="3"></rect>' +
-      '<circle cx="24" cy="48" r="9"></circle></g>' +
-      '<g class="sc-b"><rect x="34" y="4" width="6" height="34" rx="3"></rect>' +
-      '<circle cx="46" cy="48" r="9"></circle></g></svg>',
-
-    game:
-      '<svg class="pr pad" viewBox="0 0 120 58"><rect class="pd-b" x="4" y="8" width="112" height="42" rx="18"></rect>' +
-      '<rect class="pd-d" x="22" y="24" width="22" height="6" rx="3"></rect>' +
-      '<rect class="pd-d" x="30" y="16" width="6" height="22" rx="3"></rect>' +
-      '<circle class="pd-x" cx="88" cy="22" r="6"></circle>' +
-      '<circle class="pd-y" cx="100" cy="34" r="6"></circle></svg>',
-
-    ball:
-      '<svg class="pr ball" viewBox="0 0 54 54"><circle class="bl-o" cx="27" cy="27" r="24"></circle>' +
-      '<path class="bl-p" d="M27 10 L37 18 L33 30 H21 L17 18 Z"></path></svg>',
-
-    drink:
-      '<svg class="pr cup" viewBox="0 0 80 70"><path class="cp-b" d="M10 14 H62 V44 A22 22 0 0 1 10 44 Z"></path>' +
-      '<path class="cp-e" d="M62 20 A12 12 0 0 1 62 42"></path></svg>' +
-      '<i class="stm m1"></i><i class="stm m2"></i>',
-
-    pray:
-      '<svg class="pr rug" viewBox="0 0 160 46"><path class="rg" d="M10 44 V18 Q80 -6 150 18 V44 Z"></path>' +
-      '<path class="rg-l" d="M24 44 V22 Q80 4 136 22 V44"></path></svg>',
-
-    photo:
-      '<svg class="pr cam" viewBox="0 0 100 70"><rect class="cm-b" x="4" y="14" width="92" height="52" rx="10"></rect>' +
-      '<rect class="cm-t" x="34" y="4" width="32" height="12" rx="4"></rect>' +
-      '<circle class="cm-l" cx="50" cy="40" r="17"></circle>' +
-      '<circle class="cm-i" cx="50" cy="40" r="9"></circle></svg>' +
-      '<i class="flash"></i>',
-
-    flight:
-      '<svg class="pr plane" viewBox="0 0 80 46"><path class="pn" d="M4 26 L62 12 L58 24 L76 22 L58 32 L62 42 Z"></path></svg>' +
-      '<i class="cld f1"></i><i class="cld f2"></i>',
-
-    meeting:
-      '<svg class="pr kin k-c" viewBox="0 0 40 40"><rect x="4" y="4" width="32" height="32" rx="11" transform="rotate(45 20 20)"></rect></svg>' +
-      '<svg class="pr talkline" viewBox="0 0 40 20"><circle class="tl" cx="8" cy="10" r="3.5"></circle>' +
-      '<circle class="tl" cx="20" cy="10" r="3.5"></circle><circle class="tl" cx="32" cy="10" r="3.5"></circle></svg>',
-
-    idle: ''
+      var self = this;
+      this.list().then(function (have) {
+        if (have.indexOf(name) < 0 || self.current !== name) return;
+        return fetch('./anim/' + name + '.json')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (data) {
+            /* Пока файл летел, дело могло смениться — тогда эта
+               анимация уже не про то, чем человек занят. */
+            if (!data || self.current !== name) return;
+            self.player = window.lottie.loadAnimation({
+              container: el.scene,
+              renderer: 'svg',
+              loop: true,
+              autoplay: true,
+              animationData: data
+            });
+            el.pet.dataset.anim2 = 'on';
+          });
+      }).catch(function () {});
+    }
   };
 
   /* Значок дела выбирает сцену. Тип блока — запасной путь: у режимных
@@ -582,7 +474,7 @@
       if (this.scene === name) return;
       this.scene = name;
       el.pet.dataset.scene = name;
-      el.scene.innerHTML = SCENES[name] || '';
+      Anim.show(name);
     },
 
     /* Рот открывается и закрывается — ровно столько раз, сколько слов. */
