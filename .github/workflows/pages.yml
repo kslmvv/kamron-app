@@ -37,7 +37,6 @@ jobs:
           mkdir -p dist
           cp index.html styles.css app.js manifest.webmanifest sw.js dist/
           cp -r icons dist/icons
-          cp -r anim dist/anim
           # 404 возвращает приложение: ссылка вида /kamron-app/#routine должна открываться
           cp index.html dist/404.html
       - name: В сборке есть всё, на что ссылается страница

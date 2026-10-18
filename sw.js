@@ -9,15 +9,13 @@
  * Стратегия — сеть вперёд: опубликованные изменения доходят сразу,
  * а кэш выручает только когда сети нет.
  */
-const CACHE = 'kamron-app-v1.2.1';
+const CACHE = 'kamron-app-v1.2.2';
 const PREFIX = 'kamron-app-';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
-  './anim/scenes.js',
-  './anim/scenes.css',
   './manifest.webmanifest',
   './icons/favicon.svg',
   './icons/apple-touch-icon.png',

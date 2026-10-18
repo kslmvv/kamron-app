@@ -8,7 +8,6 @@
  *
  * Запуск: npm test (нужен браузер: npx playwright install chromium)
  */
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 const { chromium } = await import('playwright').catch(() => import('playwright-core'));
@@ -429,47 +428,21 @@ await page.evaluate(() => {
 await page.reload();
 await page.waitForTimeout(300);
 
-part('Сцена занятия');
+part('Чем занят питомец');
 
-/* Питомец занят тем же, чем и ты: сцена выбирается по значку дела. */
+/* Имя занятия приложение всё равно считает: его забирает виджет. */
 const scene = await page.evaluate(() => ({
   now: document.getElementById('pet').dataset.scene,
-  props: document.getElementById('scene').children.length,
-  hidden: document.getElementById('pet').dataset.anim2
+  actor: getComputedStyle(document.getElementById('actor')).opacity
 }));
-ok('у питомца есть сцена', typeof scene.now === 'string' && scene.now.length > 0);
+ok('у питомца есть занятие', typeof scene.now === 'string' && scene.now.length > 0);
 
-/* Сцена вшита в сборку, поэтому показываться должна сразу — без
-   запроса по сети и без ожидания. */
-ok('сцена показана вместо питомца', scene.hidden === 'on' && scene.props > 0);
+/* Главное после отката: на экране живой питомец, а не рисунок вместо него. */
+ok('питомец на виду', Number(scene.actor) === 1);
 ok(
-  'сцена нарисована вектором',
-  (await page.evaluate(() => document.querySelectorAll('#scene svg').length)) > 0
+  'слой сцены убран со страницы',
+  (await page.evaluate(() => !document.getElementById('scene') && !window.KAMRON_SCENES)) === true
 );
-
-/* Главное про сцены: каждому делу есть что показать. Имена берём из
-   самого app.js — иначе новый значок молча остался бы без сцены. */
-const appSrc = readFileSync(join(root, 'app.js'), 'utf8');
-const wanted = new Set();
-for (const block of ['SCENE_BY_ICON', 'SCENE_BY_KIND']) {
-  const body = appSrc.slice(appSrc.indexOf('var ' + block));
-  for (const m of body.slice(0, body.indexOf('};')).matchAll(/'([a-z]+)'(?=[,\n\s}])/g)) {
-    wanted.add(m[1]);
-  }
-}
-const haveScenes = await page.evaluate(() => Object.keys(window.KAMRON_SCENES || {}));
-const noScene = [...wanted].filter(n => n !== 'idle' && !haveScenes.includes(n));
-ok('у каждого дела есть сцена: ' + wanted.size + ' имён', noScene.length === 0, noScene.join(', '));
-
-/* Перерисовка идёт раз в минуту. Если на ней пересобирать сцену,
-   анимации начинаются заново и питомец дёргается на каждом тике. */
-const steady = await page.evaluate(() => {
-  const host = document.getElementById('scene');
-  const before = host.firstElementChild;
-  window.dispatchEvent(new Event('focus'));
-  return before === host.firstElementChild;
-});
-ok('перерисовка не перезапускает сцену', steady);
 
 /* После отбоя он спит, даже если в плане что-то стоит. */
 const lateCtx = await browser.newContext({

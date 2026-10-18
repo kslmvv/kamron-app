@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  var VERSION = '1.2.1';
+  var VERSION = '1.2.2';
   var KEY = 'den-kamrona-v3';
   var GRACE = 15;        // минут после конца дела, пока ещё можно отметить
 
@@ -175,37 +175,6 @@
      добавляются по одной, и отсутствие половины файлов не должно
      ломать экран. */
 
-  /* Сцена занятия.
-
-     Разметка лежит в anim/scenes.js, движение — в anim/scenes.css; оба
-     файла собирает tools/scenes/build.py из общего шаблона питомца.
-     Вектор вместо Lottie: сцена появляется мгновенно, без запроса по
-     сети, и это минус библиотека на 168 КБ.
-
-     Сцены idle у слоя нет нарочно: когда дела нет, на виду остаётся
-     живой питомец самого приложения со своим настроением. */
-  var Anim = {
-    current: '',
-
-    stop: function () {
-      el.scene.innerHTML = '';
-      el.pet.dataset.anim2 = 'off';
-    },
-
-    show: function (name) {
-      /* Без этой проверки перерисовка раз в минуту начинала бы все
-         анимации заново, и питомец дёргался бы на каждом тике. */
-      if (name === this.current) return;
-      this.current = name;
-      this.stop();
-      if (!name || name === 'idle') return;
-      var all = window.KAMRON_SCENES;
-      if (!all || !all[name]) return;
-      el.scene.innerHTML = all[name];
-      el.pet.dataset.anim2 = 'on';
-    }
-  };
-
   /* Значок дела выбирает сцену. Тип блока — запасной путь: у режимных
      блоков значок стоит всегда, а у задач его подбирает guessIcon. */
   var SCENE_BY_ICON = {
@@ -337,7 +306,7 @@
    'viewToday','viewChat','viewCal','viewSetup','navToday','navChat','navSetup','why','whyText','calBack','gv','wm',
    'chatLive','chatHist','toHist','histBack','histTabs','histBody','chatHello','chips','thread','chatInput','chatSend','composer',
    'calTitle','calGrid','calPrev','calNext','dayCard','stStreak','stAvg','stGoal','heat','heatMeta',
-   'scene','setRoot','setSub','subBody','setBack','habCount','schedCount','focusBtn','revCall','revSub','crest','insights','notifSub','linkSub','noteBox','noteList'].forEach(function (id) { el[id] = document.getElementById(id); });
+   'setRoot','setSub','subBody','setBack','habCount','schedCount','focusBtn','revCall','revSub','crest','insights','notifSub','linkSub','noteBox','noteList'].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var view = new Date();
   var calMonth = new Date();
@@ -442,13 +411,12 @@
       el.pet.dataset.blush = m.blush ? 'on' : 'off';
       if (m.deco) { el.deco1.textContent = m.deco[0]; el.deco2.textContent = m.deco[1]; el.deco3.textContent = m.deco[2]; }
     },
-    /* Сцена занятия. Меняется только при смене дела: перерисовывать её
-       каждые полминуты значит обрывать анимацию на середине. */
+    /* Чем человек занят сейчас. Рисунка под это нет — на главном
+       экране живёт сам питомец, а имя занятия нужно виджету и тестам. */
     setScene: function (name) {
       if (this.scene === name) return;
       this.scene = name;
       el.pet.dataset.scene = name;
-      Anim.show(name);
     },
 
     /* Рот открывается и закрывается — ровно столько раз, сколько слов. */

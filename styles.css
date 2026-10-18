@@ -2252,26 +2252,8 @@ nav button.active svg {
   }
 }
 
-/* ── Анимация занятия ────────────────────────────────────────────────
-   Когда для текущего дела есть файл Lottie, он занимает место питомца:
-   два персонажа рядом — наш шарик и чужой нарисованный — смотрелись бы
-   как случайно слипшиеся картинки. Нет файла — остаётся питомец. */
-.scene {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-.scene svg {
-  width: 100%;
-  height: 100%;
-}
-.pet[data-anim2='on'] .actor,
-.pet[data-anim2='on'] .shadow {
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
+/* Питомец лежит в своей коробке: без неё у поворота нет точки опоры
+   и фигуру уводит за край кадра. */
 .actor {
   position: absolute;
   inset: 0;
@@ -2280,8 +2262,3 @@ nav button.active svg {
   transition: opacity 0.35s ease;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .scene svg * {
-    animation: none !important;
-  }
-}
