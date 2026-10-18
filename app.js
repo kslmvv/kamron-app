@@ -1412,6 +1412,7 @@
   }
   function linkSub() {
     if (!linked()) return 'не настроена';
+    if (linkState === 'badkey') return 'ключ не подходит — нужна новая ссылка';
     return linkState === 'fail' ? 'настроена, сервер молчит' : 'настроена';
   }
   function notifSub() {
@@ -1607,6 +1608,32 @@
   function linked() { return !!(S.link && S.link.url && S.link.token); }
   function linkHeaders() { return { 'content-type': 'application/json', authorization: 'Bearer ' + S.link.token }; }
 
+  /* Ответ сервера про связь.
+
+     Разделять 401 и всё остальное обязательно: ключ, сменённый на
+     сервере, выглядит на стороне телефона точно как упавший сервер, и
+     чинится совершенно иначе — новой ссылкой из бота. Пока эти два
+     случая писались одной строкой «сервер молчит», искать причину
+     приходилось в логах сервера.
+
+     Про мёртвый ключ говорим сразу и один раз за запуск: запросов в
+     минуту несколько, и три одинаковых всплывающих сообщения подряд
+     читаются как поломка приложения. */
+  var badKeyTold = false;
+  function noteLinkReply(r) {
+    if (r && r.ok) { linkState = 'ok'; badKeyTold = false; return true; }
+    if (r && (r.status === 401 || r.status === 403)) {
+      linkState = 'badkey';
+      if (!badKeyTold) {
+        badKeyTold = true;
+        toast('Ключ сервера не подходит. Возьми новую ссылку командой /связь.');
+      }
+      return false;
+    }
+    linkState = 'fail';
+    return false;
+  }
+
   /** Что бот должен знать о дне. Отправляем словами — так модель читает лучше. */
   function dayDigest() {
     var t = tally(new Date());
@@ -1651,7 +1678,7 @@
     fetch(S.link.url.replace(/\/$/, '') + '/api/snapshot', {
       method: 'POST', headers: linkHeaders(), body: body
     }).then(function (r) {
-      if (r.ok) { lastSent = body; linkState = 'ok'; } else linkState = 'fail';
+      if (noteLinkReply(r)) lastSent = body;
     }).catch(function () { linkState = 'fail'; });
     sendWidgetDay();
   }
@@ -1666,7 +1693,7 @@
     if (body === widgetSent) return;
     fetch(S.link.url.replace(/\/$/, '') + '/api/widget', {
       method: 'POST', headers: linkHeaders(), body: body
-    }).then(function (r) { if (r.ok) widgetSent = body; }).catch(function () {});
+    }).then(function (r) { if (noteLinkReply(r)) widgetSent = body; }).catch(function () {});
   }
 
   /* ── Мост в приложение на айфоне ──────────────────────────────────
@@ -1784,7 +1811,7 @@
   function pullChanges() {
     if (!linked()) return;
     fetch(S.link.url.replace(/\/$/, '') + '/api/changes', { headers: linkHeaders() })
-      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) { return noteLinkReply(r) ? r.json() : null; })
       .then(function (data) {
         var list = (data && (data['изменения'] || data.changes)) || [];
         if (!list.length) return;

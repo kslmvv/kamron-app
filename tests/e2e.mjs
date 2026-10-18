@@ -696,6 +696,22 @@ ok('ссылка с ключом настроила связь', back.token === 
 ok('ключ убран из адреса', !back.hash.includes('k='));
 ok('задачи вернулись из копии', back.tasks === 1);
 ok('заметки вернулись из копии', back.notes === 1);
+
+/* Ключ сервера делается через openssl rand -base64 32, поэтому в нём
+   бывают «+», «/» и «=» на конце. В ссылке они едут закодированными
+   («%3D»), и если их не раскодировать, ключ приезжает похожим на
+   правильный, но сервер отвечает 401 — искать такое потом долго. */
+const tricky = 'aB+cd/efGH9=';
+await copyPage.evaluate(() => localStorage.clear());
+await copyPage.goto(base + '#k=' + encodeURIComponent(tricky) +
+  '&s=' + encodeURIComponent('http://127.0.0.1:8195'));
+await copyPage.reload();
+await copyPage.waitForTimeout(600);
+const trickyToken = await copyPage.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('den-kamrona-v3') || '{}');
+  return s.link && s.link.token;
+});
+ok('ключ со «+», «/» и «=» дошёл без искажений', trickyToken === tricky);
 await copyPage.close();
 backup.close();
 

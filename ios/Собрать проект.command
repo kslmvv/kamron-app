@@ -106,13 +106,34 @@ SWIFT
             echo "Ключ приложения записан — данные вернутся сами при первом запуске."
 
             echo "Спрашиваю у сервера отдельный ключ для виджета…"
-            KEY=$(curl -fsS --max-time 20 -H "authorization: Bearer $TOKEN" \
-                "$SERVER/api/widget/key" 2>/dev/null |
-                sed -n 's/.*"key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+            # Код ответа берём отдельно от тела: 401 и упавший сервер
+            # чинятся по-разному, а без кода оба выглядят как пустой ответ.
+            # Поэтому здесь нет -f: он прячет и тело, и код.
+            ANSWER=$(mktemp)
+            CODE=$(curl -sS -o "$ANSWER" -w '%{http_code}' --max-time 20 \
+                -H "authorization: Bearer $TOKEN" \
+                "$SERVER/api/widget/key" 2>/dev/null)
+            KEY=$(sed -n 's/.*"key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$ANSWER")
+            rm -f "$ANSWER"
 
             if [ -z "$KEY" ]; then
-                echo "Сервер ключ виджета не отдал. Проверьте, что ссылка свежая"
-                echo "и сервис jarvis в Railway запущен. Соберу пока без виджета."
+                case "$CODE" in
+                401|403)
+                    echo "Сервер не признал ключ из ссылки (ответ $CODE)."
+                    echo "Так бывает, если APP_ACCESS_TOKEN в Railway меняли, а"
+                    echo "сервисы jarvis-bot и telegram-call после этого не"
+                    echo "перезапускали: бот отдаёт команде /связь старый ключ."
+                    echo "Перезапустите их в Railway, затем возьмите ссылку заново."
+                    ;;
+                000|"")
+                    echo "Сервер не ответил. Проверьте интернет и что сервис"
+                    echo "jarvis в Railway запущен."
+                    ;;
+                *)
+                    echo "Сервер ответил $CODE, но ключа в ответе нет."
+                    ;;
+                esac
+                echo "Соберу пока без виджета."
             else
                 cat > "$SECRETS" <<SWIFT
 //
