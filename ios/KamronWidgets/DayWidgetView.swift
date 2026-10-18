@@ -12,7 +12,7 @@ struct DayWidgetView: View {
         // На экране блокировки места нет ни на питомца, ни на объяснения:
         // там помещается одна мысль, и это «что сейчас и сколько осталось».
         case .accessoryRectangular:
-            LockRectangle(state: state)
+            LockRectangle(state: state, now: entry.date)
         case .accessoryCircular:
             LockCircle(state: state)
         case .accessoryInline:
@@ -36,6 +36,7 @@ struct DayWidgetView: View {
 /// Прямоугольный: строка дела и живой отсчёт до его конца.
 private struct LockRectangle: View {
     let state: DayState
+    let now: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -43,9 +44,8 @@ private struct LockRectangle: View {
                 Label(block.title, systemImage: state.activity.symbol ?? "clock")
                     .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
-                Text(timerInterval: DaySnapshot.countdown(to: DaySnapshot.moment(block.to)), countsDown: true)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .minimumScaleFactor(0.7)
+                left(until: DaySnapshot.moment(block.to, on: now))
             } else if let soon = state.next.first {
                 Label("дальше в " + clock(soon.from), systemImage: "clock")
                     .font(.system(size: 13, weight: .semibold))
@@ -53,12 +53,31 @@ private struct LockRectangle: View {
                 Text(soon.title)
                     .font(.system(size: 15, weight: .bold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             } else {
-                Label(state.fresh ? "День закрыт" : "Нет данных", systemImage: "moon.zzz.fill")
+                Label(state.fresh ? "День закрыт" : "Нет данных",
+                      systemImage: state.fresh ? "moon.zzz.fill" : "exclamationmark.triangle")
                     .font(.system(size: 15, weight: .bold))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    /// Секунды показываем только у короткого дела — ровно как в виджете на
+    /// домашнем экране. Бегущие 5:23:41 до конца рабочего дня ничего не
+    /// сообщают, только мельтешат на экране блокировки.
+    @ViewBuilder private func left(until end: Date) -> some View {
+        if DaySnapshot.ticking(until: end, from: now) {
+            Text(timerInterval: DaySnapshot.countdown(to: end, from: now), countsDown: true)
+                .font(.system(size: 13, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        } else {
+            Text(DaySnapshot.rough(until: end, from: now) + " осталось")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
     }
 }
 
@@ -67,10 +86,17 @@ private struct LockCircle: View {
     let state: DayState
 
     var body: some View {
-        Gauge(value: Double(min(max(state.pct, 0), 100)), in: 0...100) {
-            Image(systemName: state.activity.symbol ?? "circle.dashed")
+        // Пустое кольцо при отсутствии данных неотличимо от дня, в котором
+        // ничего не сделано, — а это молчаливое враньё. Лучше знак.
+        if state.fresh {
+            Gauge(value: Double(min(max(state.pct, 0), 100)), in: 0...100) {
+                Image(systemName: state.activity.symbol ?? "circle.dashed")
+            }
+            .gaugeStyle(.accessoryCircularCapacity)
+        } else {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 22, weight: .semibold))
         }
-        .gaugeStyle(.accessoryCircularCapacity)
     }
 }
 
@@ -79,12 +105,15 @@ private struct LockInline: View {
     let state: DayState
 
     var body: some View {
+        // Строка рядом с часами короткая, и система режет её многоточием,
+        // не глядя на шрифт. Название дела важнее времени его конца.
         if let block = state.current {
-            Label(block.title + " до " + clock(block.to), systemImage: state.activity.symbol ?? "clock")
+            Label(block.title, systemImage: state.activity.symbol ?? "clock")
         } else if let soon = state.next.first {
             Label(clock(soon.from) + " " + soon.title, systemImage: "clock")
         } else {
-            Label("День закрыт", systemImage: "moon.zzz.fill")
+            Label(state.fresh ? "День закрыт" : "Нет данных",
+                  systemImage: state.fresh ? "moon.zzz.fill" : "exclamationmark.triangle")
         }
     }
 }
@@ -146,7 +175,7 @@ private struct SmallView: View {
                 Text("день закрыт")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(state.dimColor)
-                Text("\(state.snapshot?.pct ?? 0)%")
+                Text("\(state.pct)%")
                     .font(.system(size: 30, weight: .heavy))
                     .foregroundStyle(state.textColor)
             }
@@ -204,7 +233,7 @@ private struct MediumView: View {
                     Text(state.next.isEmpty ? "день закрыт" : "перерыв")
                         .font(.system(size: 19, weight: .heavy))
                         .foregroundStyle(state.textColor)
-                    Text("сделано \(state.snapshot?.pct ?? 0)%")
+                    Text("сделано \(state.pct)%")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(state.dimColor)
                 }
@@ -243,7 +272,7 @@ private struct MediumView: View {
                 Spacer(minLength: 0)
 
                 HStack(spacing: 6) {
-                    Tile(label: "день", value: "\(state.snapshot?.pct ?? 0)%", state: state)
+                    Tile(label: "день", value: "\(state.pct)%", state: state)
                     Tile(label: "мимо", value: "\(state.snapshot?.missed ?? 0)", state: state)
                 }
             }

@@ -99,10 +99,13 @@ struct DayBackground: View {
     let entry: DayEntry
 
     var body: some View {
-        if family == .accessoryCircular || family == .accessoryRectangular || family == .accessoryInline {
-            // На экране блокировки подложку рисует система, поверх обоев и
-            // со своим размытием. Свой фон поверх неё становится мутным
-            // пятном, из которого не читается ни текст, ни кольцо.
+        if family == .accessoryCircular {
+            // Круглому подложка нужна: без неё кольцо теряется на светлых
+            // обоях. Рисует её не система сама по себе, а вот этот вызов.
+            AccessoryWidgetBackground()
+        } else if family == .accessoryRectangular || family == .accessoryInline {
+            // А этим двум фон не нужен: родные виджеты экрана блокировки
+            // идут прямо по обоям, и цветная плашка выдала бы чужака.
             Color.clear
         } else {
             switch entry.state.tone {
