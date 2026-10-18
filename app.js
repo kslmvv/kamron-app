@@ -166,6 +166,120 @@
     return (task && task.icon) || guessIcon(task && task.title);
   }
 
+  /* ── Сцены занятий ────────────────────────────────────────────────
+     Питомец не просто меняет лицо: он занят тем же, чем и ты. Сцена
+     выбирается по значку дела, поэтому работает и для тех задач,
+     которые ты придумаешь завтра, — значок им подбирается сам.
+
+     Реквизит рисуется фигурами, а не картинками: так он тянется под
+     любой экран и не грузит ни байта по сети. */
+
+  var SCENES = {
+    read:
+      '<svg class="pr book" viewBox="0 0 120 70"><path class="bk-p" d="M8 16 Q34 6 58 18 V60 Q34 48 8 58 Z"></path>' +
+      '<path class="bk-p" d="M112 16 Q86 6 62 18 V60 Q86 48 112 58 Z"></path>' +
+      '<path class="bk-f" d="M60 17 Q86 7 111 17 V57 Q86 47 60 57 Z"></path></svg>',
+
+    work:
+      '<svg class="pr lap" viewBox="0 0 120 74"><rect class="lp-s" x="16" y="4" width="88" height="50" rx="7"></rect>' +
+      '<rect class="lp-g" x="21" y="9" width="78" height="40" rx="4"></rect>' +
+      '<g class="lp-c"><rect x="28" y="16" width="30" height="4" rx="2"></rect>' +
+      '<rect x="28" y="26" width="48" height="4" rx="2"></rect>' +
+      '<rect x="28" y="36" width="20" height="4" rx="2"></rect></g>' +
+      '<path class="lp-b" d="M6 56 H114 L106 70 H14 Z"></path></svg>',
+
+    shower:
+      '<svg class="pr shw" viewBox="0 0 120 44"><path class="sh-h" d="M42 4 H78 A9 9 0 0 1 87 13 V18 H33 V13 A9 9 0 0 1 42 4 Z"></path></svg>' +
+      '<i class="drp p1"></i><i class="drp p2"></i><i class="drp p3"></i><i class="drp p4"></i>' +
+      '<i class="bub u1"></i><i class="bub u2"></i><i class="bub u3"></i>',
+
+    eat:
+      '<svg class="pr bowl" viewBox="0 0 120 56"><path class="bw" d="M20 14 H100 A40 40 0 0 1 60 52 A40 40 0 0 1 20 14 Z"></path></svg>' +
+      '<svg class="pr spoon" viewBox="0 0 40 60"><rect class="sp-s" x="17" y="14" width="5" height="42" rx="2.5"></rect>' +
+      '<ellipse class="sp-h" cx="19.5" cy="12" rx="9" ry="12"></ellipse></svg>' +
+      '<i class="stm m1"></i><i class="stm m2"></i>',
+
+    travel:
+      '<i class="spd v1"></i><i class="spd v2"></i><i class="spd v3"></i>' +
+      '<svg class="pr road" viewBox="0 0 200 8"><rect class="rd" x="0" y="2" width="200" height="4" rx="2"></rect></svg>',
+
+    sport:
+      '<svg class="pr dumb" viewBox="0 0 130 40"><rect class="db-b" x="30" y="16" width="70" height="8" rx="4"></rect>' +
+      '<rect class="db-w" x="10" y="4" width="18" height="32" rx="7"></rect>' +
+      '<rect class="db-w" x="102" y="4" width="18" height="32" rx="7"></rect></svg>',
+
+    screen:
+      '<svg class="pr tv" viewBox="0 0 120 80"><rect class="tv-f" x="4" y="4" width="112" height="64" rx="9"></rect>' +
+      '<rect class="tv-s" x="11" y="11" width="98" height="50" rx="5"></rect>' +
+      '<rect class="tv-g" x="11" y="11" width="98" height="50" rx="5"></rect>' +
+      '<path class="tv-l" d="M44 72 H76"></path></svg>',
+
+    music:
+      '<i class="not t1">♪</i><i class="not t2">♫</i><i class="not t3">♪</i>',
+
+    sleep:
+      '<svg class="pr quilt" viewBox="0 0 170 60"><path class="qt" d="M6 28 Q85 2 164 28 V56 H6 Z"></path>' +
+      '<path class="qt-l" d="M6 40 Q85 16 164 40"></path></svg>' +
+      '<i class="zed g1">z</i><i class="zed g2">z</i><i class="zed g3">z</i>',
+
+    wake:
+      '<svg class="pr sun" viewBox="0 0 170 100"><g class="sn-r"><rect x="83" y="2" width="4" height="13" rx="2"></rect>' +
+      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(45 85 50)"></rect>' +
+      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(-45 85 50)"></rect>' +
+      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(90 85 50)"></rect>' +
+      '<rect x="83" y="2" width="4" height="13" rx="2" transform="rotate(-90 85 50)"></rect></g>' +
+      '<circle class="sn" cx="85" cy="64" r="30"></circle></svg>',
+
+    call:
+      '<svg class="pr phone" viewBox="0 0 44 64"><rect class="ph" x="6" y="4" width="32" height="56" rx="8"></rect>' +
+      '<rect class="ph-s" x="11" y="11" width="22" height="40" rx="3"></rect></svg>' +
+      '<i class="wav k1"></i><i class="wav k2"></i>',
+
+    shop:
+      '<svg class="pr bag" viewBox="0 0 60 72"><path class="bg-h" d="M19 24 V17 A11 11 0 0 1 41 17 V24"></path>' +
+      '<rect class="bg-b" x="8" y="24" width="44" height="42" rx="7"></rect></svg>',
+
+    clean:
+      '<svg class="pr broom" viewBox="0 0 70 96"><rect class="br-s" x="31" y="2" width="6" height="56" rx="3"></rect>' +
+      '<path class="br-h" d="M20 58 H50 L57 90 H13 Z"></path></svg>' +
+      '<i class="dst w1"></i><i class="dst w2"></i>',
+
+    walk:
+      '<svg class="pr grass" viewBox="0 0 220 26"><path class="gr" d="M8 26 Q12 8 16 26 M26 26 Q31 6 36 26 M48 26 Q52 10 56 26' +
+      ' M70 26 Q75 5 80 26 M94 26 Q98 9 102 26 M118 26 Q123 7 128 26 M142 26 Q146 10 150 26' +
+      ' M166 26 Q171 6 176 26 M192 26 Q196 9 200 26"></path></svg>',
+
+    idle: ''
+  };
+
+  /* Значок дела выбирает сцену. Тип блока — запасной путь: у режимных
+     блоков значок стоит всегда, а у задач его подбирает guessIcon. */
+  var SCENE_BY_ICON = {
+    '📖': 'read', '📚': 'read', '📝': 'read', '📊': 'read', '🎓': 'read',
+    '💻': 'work',
+    '🚿': 'shower',
+    '🍽️': 'eat', '☕️': 'eat', '🍲': 'eat', '💧': 'eat',
+    '🚌': 'travel', '🚗': 'travel', '✈️': 'travel',
+    '🏋️': 'sport', '⚽️': 'sport',
+    '🎬': 'screen', '🎮': 'screen',
+    '🎧': 'music',
+    '😴': 'sleep', '🌙': 'sleep',
+    '🌅': 'wake',
+    '📞': 'call', '🤝': 'call',
+    '🛒': 'shop', '🎁': 'shop', '💳': 'shop',
+    '🧹': 'clean', '🧺': 'clean', '🔧': 'clean',
+    '🌳': 'walk', '🌿': 'walk', '✨': 'walk'
+  };
+  var SCENE_BY_KIND = {
+    lesson: 'read', study: 'read', work: 'work', meal: 'eat', travel: 'travel',
+    chore: 'shower', home: 'wake', free: 'walk', window: 'idle', task: 'idle'
+  };
+
+  function sceneFor(block) {
+    if (!block) return 'idle';
+    return SCENE_BY_ICON[block.icon] || SCENE_BY_KIND[block.kind] || 'idle';
+  }
+
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
 
   /* ── День ─────────────────────────────────────────────────────────── */
@@ -253,7 +367,7 @@
    'viewToday','viewChat','viewCal','viewSetup','navToday','navChat','navSetup','why','whyText','calBack','gv','wm',
    'chatLive','chatHist','toHist','histBack','histTabs','histBody','chatHello','chips','thread','chatInput','chatSend','composer',
    'calTitle','calGrid','calPrev','calNext','dayCard','stStreak','stAvg','stGoal','heat','heatMeta',
-   'setRoot','setSub','subBody','setBack','habCount','schedCount','focusBtn','revCall','revSub','crest','insights','notifSub','linkSub','noteBox','noteList'].forEach(function (id) { el[id] = document.getElementById(id); });
+   'scene','setRoot','setSub','subBody','setBack','habCount','schedCount','focusBtn','revCall','revSub','crest','insights','notifSub','linkSub','noteBox','noteList'].forEach(function (id) { el[id] = document.getElementById(id); });
 
   var view = new Date();
   var calMonth = new Date();
@@ -358,6 +472,15 @@
       el.pet.dataset.blush = m.blush ? 'on' : 'off';
       if (m.deco) { el.deco1.textContent = m.deco[0]; el.deco2.textContent = m.deco[1]; el.deco3.textContent = m.deco[2]; }
     },
+    /* Сцена занятия. Меняется только при смене дела: перерисовывать её
+       каждые полминуты значит обрывать анимацию на середине. */
+    setScene: function (name) {
+      if (this.scene === name) return;
+      this.scene = name;
+      el.pet.dataset.scene = name;
+      el.scene.innerHTML = SCENES[name] || '';
+    },
+
     /* Рот открывается и закрывается — ровно столько раз, сколько слов. */
     talk: function (words) {
       var n = Math.max(3, Math.min(9, words));
@@ -551,6 +674,12 @@
     el.praise.textContent = t.pct >= 100 ? 'Весь день закрыт' : t.pct >= 70 ? 'Отличный темп' : t.pct >= 40 ? 'Половина позади' : t.pct > 0 ? 'Начало положено' : 'Первое дело — и пошло';
     el.lost.hidden = !t.miss;
     el.lost.textContent = t.miss ? 'Упущено безвозвратно: ' + t.miss + ' — это уже не вернуть' : '';
+
+    /* Чем занят питомец. Ночью он спит независимо от плана: если дело
+       идёт в три часа ночи, это уже не повод бодриться. */
+    var night = t.nowMin >= toMin(S.cfg.sleep) || t.nowMin < toMin(S.cfg.wake);
+    var busy = t.day.find(function (b) { return !b.free && t.nowMin >= b.from && t.nowMin < b.to; });
+    Pet.setScene(!isToday() ? 'idle' : night ? 'sleep' : sceneFor(busy));
 
     renderHabTop(t.dk);
     renderNotes();

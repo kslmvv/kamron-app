@@ -428,6 +428,31 @@ await page.evaluate(() => {
 await page.reload();
 await page.waitForTimeout(300);
 
+part('Сцена занятия');
+
+/* Питомец занят тем же, чем и ты: сцена выбирается по значку дела. */
+const scene = await page.evaluate(() => ({
+  now: document.getElementById('pet').dataset.scene,
+  props: document.getElementById('scene').children.length
+}));
+ok('у питомца есть сцена', typeof scene.now === 'string' && scene.now.length > 0);
+ok('в сцене есть реквизит', scene.props > 0);
+
+/* После отбоя он спит, даже если в плане что-то стоит. */
+const lateCtx = await browser.newContext({
+  viewport: { width: 393, height: 852 },
+  timezoneId: 'Asia/Tashkent'
+});
+await lateCtx.addInitScript(freeze('2026-10-15T19:30:00Z')); // 00:30 Ташкент
+const afterHours = await lateCtx.newPage();
+await afterHours.goto(base);
+await afterHours.waitForTimeout(700);
+ok(
+  'после отбоя питомец спит',
+  (await afterHours.evaluate(() => document.getElementById('pet').dataset.scene)) === 'sleep'
+);
+await lateCtx.close();
+
 part('Связь с Jarvis');
 // Поддельный сервер приложения: проверяем, что снимок уходит, а надиктованное
 // боту приходит обратно и применяется.
