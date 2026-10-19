@@ -70,6 +70,8 @@ class RealtimeSession:
         self.closed = False
 
     async def start(self) -> None:
+        if not config.ai_enabled:
+            raise RuntimeError("ИИ выключен (AI_ENABLED=0), токены не тратятся. Включить — переменной AI_ENABLED=1 в Railway.")
         if not config.openai_key:
             raise RuntimeError("OPENAI_API_KEY не задан — разговаривать нечем")
         self._session = aiohttp.ClientSession(

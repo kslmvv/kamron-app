@@ -31,6 +31,11 @@ os.environ.update(
     JARVIS_TOKEN="test-app-token",
     TIMEZONE="Asia/Tashkent",
     MAX_DAY_COST="0.25",
+    # Выключатель платного по умолчанию выключен — иначе забытая
+    # переменная однажды вернула бы расход сама. Проверки про мозг,
+    # расшифровку и озвучку включают его явно; отдельная проверка ниже
+    # следит за тем, что выключенным он действительно всё останавливает.
+    AI_ENABLED="1",
 )
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -353,6 +358,36 @@ async def run() -> None:
 
     ok("ночь считается тихим временем", bot_main.quiet_now(at("23:30")) and bot_main.quiet_now(at("05:00")))
     ok("день тихим не считается", not bot_main.quiet_now(at("12:00")))
+
+    # ── Выключатель платного ──────────────────────────────────────────
+    #
+    # Смысл выключателя в том, что при нём не уходит ни одного платного
+    # запроса. Проверяем именно это — счётчики обращений к модели, а не
+    # текст ответа: ответ можно сохранить, продолжая тратить.
+    config.ai_enabled = False
+    state.cost = 0.0
+    state.nudges = 0
+    state.save()
+
+    ok("выключенный ИИ запрещает траты", not state.can_spend())
+
+    thought_before = sent["transcribed"]
+    spoken_before = len(sent["spoken"])
+    voices_before = len(sent["voices"])
+    messages_before = len(sent["messages"])
+
+    reply_text = await bot_main.answer("Что у меня сегодня?")
+    ok("при выключенном ИИ бот объясняет, а не отвечает молчанием",
+       "AI_ENABLED" in reply_text)
+    ok("при выключенном ИИ модель не вызывалась",
+       sent["transcribed"] == thought_before and len(sent["spoken"]) == spoken_before)
+    ok("расход за сутки не вырос", state.cost == 0.0)
+
+    await bot_main.nudges(at("08:20"))
+    ok("при выключенном ИИ пинков нет",
+       len(sent["voices"]) == voices_before and len(sent["messages"]) == messages_before)
+
+    config.ai_enabled = True
 
     await telegram.stop()
     for runner in runners:

@@ -5,6 +5,8 @@ from .config import config
 
 async def synthesize(text: str, path: str) -> None:
     """Сохраняет озвученный текст в файл. Формат wav — его читает ffmpeg без плясок."""
+    if not config.ai_enabled:
+        raise RuntimeError("ИИ выключен (AI_ENABLED=0), токены не тратятся. Включить — переменной AI_ENABLED=1 в Railway.")
     if not config.openai_key:
         raise RuntimeError("OPENAI_API_KEY не задан — озвучивать нечем")
     payload = {

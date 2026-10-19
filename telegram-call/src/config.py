@@ -26,6 +26,11 @@ class Config:
     target = os.environ.get("TG_TARGET", "")
 
     openai_key = os.environ.get("OPENAI_API_KEY", "")
+
+    # Главный выключатель платного — тот же, что у бота, и так же
+    # выключен по умолчанию. Здесь это важнее вдвойне: живой разговор с
+    # моделью — самое дорогое, что есть во всём хозяйстве.
+    ai_enabled = os.environ.get("AI_ENABLED", "0") not in ("0", "false", "")
     tts_model = os.environ.get("TTS_MODEL", "gpt-4o-mini-tts")
     tts_voice = os.environ.get("TTS_VOICE", "alloy")
 

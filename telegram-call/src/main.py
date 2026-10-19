@@ -29,6 +29,7 @@ async def health(request: web.Request) -> web.Response:
             "сервис": "Kamron APP — звонки Telegram",
             "готов": config.ready() and caller.authorized,
             "не_задано": config.missing(),
+            "ии_включен": config.ai_enabled,
             "аккаунт": getattr(caller.me, "username", None) or getattr(caller.me, "id", None),
             "квота": caller.quota(),
             "расписание": scheduler.status(),

@@ -103,6 +103,15 @@ class State:
         return max(0.0, config.max_day_cost - self.cost)
 
     def can_spend(self) -> bool:
+        """Можно ли сейчас тратить деньги.
+
+        Выключатель проверяется здесь, в одном узком месте, через которое
+        проходят все платные вызовы: и мозг, и расшифровка, и озвучка.
+        Поставь его только в обработчиках — и следующий платный вызов,
+        добавленный через полгода, пройдёт мимо него молча.
+        """
+        if not config.ai_enabled:
+            return False
         self.roll()
         return self.cost < config.max_day_cost
 

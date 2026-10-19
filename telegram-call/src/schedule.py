@@ -118,6 +118,12 @@ class Scheduler:
             await asyncio.sleep(30)
 
     def start(self) -> None:
+        # Звонки по расписанию ведёт модель, поэтому при выключенном ИИ
+        # будильник не заводится вовсе: иначе каждое утро был бы звонок,
+        # который заканчивается отказом.
+        if not config.ai_enabled:
+            log.info("ИИ выключен — звонки по расписанию не заводятся")
+            return
         if not config.schedule_enabled:
             log.info("Расписание выключено (SCHEDULE_ENABLED=0)")
             return

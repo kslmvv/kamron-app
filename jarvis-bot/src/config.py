@@ -22,6 +22,15 @@ class Config:
     bot_token = os.environ.get("BOT_TOKEN", "")
     openai_key = os.environ.get("OPENAI_API_KEY", "")
 
+    # Главный выключатель платного.
+    #
+    # По умолчанию ВЫКЛЮЧЕНО, и это сделано нарочно. Выключатель,
+    # включённый по умолчанию, возвращается сам — при переразвёртывании,
+    # при переносе сервиса, при пересоздании переменных, — и расход
+    # возобновляется молча. Чтобы бот снова думал, говорил и слушал,
+    # нужно явно поставить AI_ENABLED=1.
+    ai_enabled = os.environ.get("AI_ENABLED", "0") not in ("0", "false", "")
+
     # Какими моделями работаем. Вынесено в переменные, чтобы менять без правки кода.
     brain_model = os.environ.get("BRAIN_MODEL", "gpt-4o-mini")
     stt_model = os.environ.get("STT_MODEL", "gpt-4o-mini-transcribe")

@@ -66,7 +66,7 @@ async def answer(text: str, extra: str = "") -> str:
 
     for _ in range(3):
         if not state.can_spend():
-            return "Дневной лимит расхода исчерпан. Завтра продолжим."
+            return blocked_text()
         message, cost = await openai_api.think(messages, brain.TOOLS)
         state.spend(cost, "мозг")
         calls = message.get("tool_calls") or []
@@ -127,7 +127,7 @@ async def on_voice(chat: int, file_id: str) -> None:
             )
             return
         if not state.can_spend():
-            await telegram.send(chat, "Дневной лимит расхода исчерпан. Завтра продолжим.")
+            await telegram.send(chat, blocked_text())
             return
 
         text, cost = await openai_api.transcribe(mp3, seconds)
@@ -259,6 +259,21 @@ def hhmm(value: str) -> int:
         return -1
 
 
+def blocked_text() -> str:
+    """Почему бот не отвечает по-умному.
+
+    Разделять обязательно: «лимит исчерпан» значит «подожди до завтра», а
+    выключенный ИИ сам не включится никогда. Один и тот же текст на оба
+    случая заставил бы ждать того, чего не произойдёт.
+    """
+    if not config.ai_enabled:
+        return (
+            "ИИ выключен, токены не тратятся. "
+            "Включить: переменная AI_ENABLED=1 у сервиса в Railway."
+        )
+    return "Дневной лимит расхода исчерпан. Завтра продолжим."
+
+
 async def nudge(text_prompt: str, tag: str) -> None:
     """Короткое голосовое по своей инициативе."""
     state.mark_fired(tag)
@@ -278,6 +293,8 @@ async def nudges(now: datetime) -> None:
     сегодня означает, что приложение сегодня не открывали — тогда молчим,
     чтобы не напоминать о вчерашнем.
     """
+    if not config.ai_enabled:
+        return
     if not config.nudge_enabled or state.nudges >= config.nudge_max:
         return
     snap = await app_link.snapshot()
@@ -340,7 +357,11 @@ async def scheduler() -> None:
             if state.owner:
                 now = datetime.now(zone())
                 clock = now.strftime("%H:%M")
-                if config.schedule_enabled:
+                # Сводки сочиняет модель, поэтому при выключенном ИИ их
+                # не бывает вовсе. Иначе каждое утро приходило бы «ИИ
+                # выключен» — сообщение, которое никто не просил и
+                # которое ничего не меняет.
+                if config.schedule_enabled and config.ai_enabled:
                     for name, at, prompt in (
                         ("morning", config.morning_at, MORNING),
                         ("evening", config.evening_at, EVENING),
@@ -367,6 +388,7 @@ async def health(_request):
             "неХватает": config.missing(),
             "владелец": bool(state.owner),
             "дискПодключен": state.persistent,
+            "ииВключен": config.ai_enabled,
             "расходЗаСутки": round(state.cost, 4),
             "лимитЗаСутки": config.max_day_cost,
             "сообщенийЗаСутки": state.messages,
